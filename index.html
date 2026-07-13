@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#4fc3f7">
+<title>Skrzynie Słówek — gra logopedyczna</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none; }
+  html, body { height:100%; overflow:hidden; touch-action:manipulation; }
+  body {
+    font-family: "Baloo 2", "Comic Sans MS", "Segoe UI", system-ui, sans-serif;
+    background: var(--bg, #4fc3f7);
+    transition: background 0.8s ease;
+    display:flex; flex-direction:column; align-items:center; justify-content:space-between;
+    position:fixed; inset:0;
+  }
+
+  /* ── title ── */
+  #title {
+    margin-top: max(9vh, env(safe-area-inset-top, 0px) + 60px);
+    padding: 0 16px;
+    color:#fff; font-size: clamp(26px, 7vw, 48px); font-weight:800;
+    letter-spacing:2px; text-align:center;
+    text-shadow: 0 3px 0 rgba(0,0,0,0.12);
+    animation: titlein 0.5s cubic-bezier(.2,1.6,.4,1);
+  }
+  @keyframes titlein { from { transform:scale(0.3); opacity:0; } to { transform:scale(1); opacity:1; } }
+
+  #counter {
+    position:absolute; top: max(12px, env(safe-area-inset-top, 0px) + 6px); right:14px;
+    background:rgba(255,255,255,0.25); border-radius:999px; padding:8px 16px;
+    color:#fff; font-size:22px; font-weight:800; text-shadow:0 2px 0 rgba(0,0,0,0.12);
+  }
+  #pickBtn {
+    position:absolute; top: max(12px, env(safe-area-inset-top, 0px) + 6px); left:14px;
+    background:rgba(255,255,255,0.25); border:none; border-radius:999px; padding:8px 16px;
+    color:#fff; font-size:20px; font-weight:800; text-shadow:0 2px 0 rgba(0,0,0,0.12);
+    font-family:inherit; cursor:pointer; z-index:8;
+  }
+
+  /* ── chest stage ── */
+  #stage {
+    flex:1; display:flex; align-items:center; justify-content:center;
+    width:100%; position:relative;
+  }
+  #chestBtn {
+    width:min(66vw, 40vh, 380px); aspect-ratio:1/0.92;
+    position:relative; cursor:pointer; border:none; background:none;
+    animation: idlebob 2.4s ease-in-out infinite;
+    transform-origin:50% 90%;
+  }
+  @keyframes idlebob {
+    0%,100% { transform: translateY(0) scale(1); }
+    50%     { transform: translateY(-12px) scale(1.015); }
+  }
+  #chestBtn.shake1 { animation: shake 0.42s cubic-bezier(.3,1.5,.4,1); }
+  #chestBtn.shake2 { animation: shakeBig 0.5s cubic-bezier(.3,1.5,.4,1); }
+  @keyframes shake {
+    0% { transform: scale(1.08,0.86); }
+    25% { transform: rotate(-5deg) scale(1.04); }
+    50% { transform: rotate(4deg) scale(1.02); }
+    75% { transform: rotate(-2deg); }
+    100% { transform: rotate(0); }
+  }
+  @keyframes shakeBig {
+    0% { transform: scale(1.12,0.8); }
+    18% { transform: rotate(-9deg) scale(1.08) translateY(-14px); }
+    36% { transform: rotate(8deg) scale(1.05) translateY(-6px); }
+    54% { transform: rotate(-6deg) translateY(-10px); }
+    72% { transform: rotate(4deg); }
+    100% { transform: rotate(0); }
+  }
+  #chestBtn.opened { animation: openpop 0.6s cubic-bezier(.2,1.8,.4,1) forwards; }
+  @keyframes openpop {
+    0% { transform: scale(0.9,1.15); }
+    40% { transform: scale(1.18,0.9) translateY(8px); }
+    100% { transform: scale(1.05) translateY(0); }
+  }
+  #chestBtn svg { width:100%; height:100%; overflow:visible; display:block;
+    filter: drop-shadow(0 18px 22px rgba(0,0,0,0.22)); }
+
+  /* lid opens */
+  #lidG { transition: transform 0.45s cubic-bezier(.3,1.9,.4,1); transform-origin: 100px 78px; }
+  .open #lidG { transform: translateY(-58px) rotate(-24deg); }
+  #glowBurst { opacity:0; transform-origin:100px 105px; }
+  .open #glowBurst { animation: burst 0.9s ease-out forwards; }
+  @keyframes burst {
+    0% { opacity:0; transform: scale(0.2); }
+    30% { opacity:1; }
+    100% { opacity:0; transform: scale(3.2); }
+  }
+
+  /* rotating rays behind chest during prize reveal */
+  #rays {
+    position:absolute; left:50%; top:50%; width:150vmax; height:150vmax;
+    margin-left:-75vmax; margin-top:-75vmax;
+    background: repeating-conic-gradient(rgba(255,255,255,0.16) 0deg 12deg, transparent 12deg 24deg);
+    border-radius:50%; opacity:0; pointer-events:none;
+    animation: spin 14s linear infinite;
+    transition: opacity 0.4s;
+  }
+  #rays.on { opacity:1; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* prize: emoji + word */
+  #prize {
+    position:absolute; left:50%; top:50%;
+    transform: translate(-50%,-50%) scale(0);
+    display:flex; flex-direction:column; align-items:center; gap:2vh;
+    pointer-events:none; z-index:5; width:100%;
+  }
+  #pEmoji {
+    font-size: clamp(80px, 24vw, 170px); line-height:1;
+    filter: drop-shadow(0 10px 14px rgba(0,0,0,0.25));
+  }
+  #pWord {
+    font-size: clamp(32px, 9vw, 60px); font-weight:800; letter-spacing:3px;
+    color:#fff; text-shadow: 0 3px 0 rgba(0,0,0,0.2);
+    background: rgba(0,0,0,0.28); border-radius:999px;
+    padding: 6px 28px; white-space:nowrap;
+  }
+  #pWord .hl { color:#ffe33d; }
+  #prize.show { animation: prizepop 0.85s cubic-bezier(.2,1.7,.35,1) forwards; }
+  @keyframes prizepop {
+    0% { transform: translate(-50%,-20%) scale(0) rotate(-14deg); }
+    60% { transform: translate(-50%,-64%) scale(1.15) rotate(4deg); }
+    100% { transform: translate(-50%,-56%) scale(1) rotate(0deg); }
+  }
+  #bravo {
+    position:absolute; left:50%; top:12%;
+    transform: translateX(-50%) scale(0); z-index:5; pointer-events:none;
+    color:#fff; font-size: clamp(34px, 9vw, 64px); font-weight:800;
+    text-shadow: 0 4px 0 rgba(0,0,0,0.15); white-space:nowrap;
+  }
+  #bravo.show { animation: bravopop 0.6s cubic-bezier(.2,1.8,.4,1) 0.25s forwards; }
+  @keyframes bravopop { to { transform: translateX(-50%) scale(1); } }
+
+  /* ── tap progress dots ── */
+  #dots { display:flex; gap:26px; margin-bottom:10px; }
+  .dot {
+    width: clamp(54px, 16vw, 84px); height: clamp(54px, 16vw, 84px);
+    border-radius:50%; background: rgba(0,0,0,0.18);
+    display:flex; align-items:center; justify-content:center;
+    transition: transform 0.2s;
+  }
+  .dot svg { width:55%; height:55%; }
+  .dot svg path { stroke: rgba(255,255,255,0.55); stroke-width:14; fill:none; stroke-linecap:round; stroke-linejoin:round; }
+  .dot.done { background:#fff; box-shadow: 0 6px 0 rgba(0,0,0,0.12); animation: dotpop 0.35s cubic-bezier(.2,2.2,.4,1); }
+  .dot.done svg path { stroke: var(--accent, #2e9be6); }
+  @keyframes dotpop { 50% { transform: scale(1.35); } }
+
+  #hint {
+    color:#fff; font-size: clamp(19px, 5vw, 30px); font-weight:700;
+    text-align:center; text-shadow:0 2px 0 rgba(0,0,0,0.12);
+    margin-bottom: max(4vh, env(safe-area-inset-bottom, 0px) + 2.5vh);
+    padding: 0 20px;
+    animation: hintpulse 1.6s ease-in-out infinite;
+  }
+  @keyframes hintpulse { 0%,100% { transform:scale(1); opacity:0.95; } 50% { transform:scale(1.06); opacity:1; } }
+
+  /* ambient floating sparkles */
+  .amb { position:absolute; color:rgba(255,255,255,0.7); pointer-events:none;
+    animation: ambfloat 5s ease-in-out infinite; }
+  @keyframes ambfloat { 0%,100% { transform: translateY(0) scale(1); opacity:0.5; } 50% { transform: translateY(-24px) scale(1.25); opacity:1; } }
+
+  #fx { position:fixed; inset:0; pointer-events:none; z-index:10; }
+  #flash { position:fixed; inset:0; background:#fff; opacity:0; pointer-events:none; z-index:9; }
+  #flash.go { animation: flashout 0.5s ease-out; }
+  @keyframes flashout { 0% { opacity:0.9; } 100% { opacity:0; } }
+
+  /* ── phoneme picker overlay ── */
+  #picker {
+    position:fixed; inset:0; z-index:20;
+    background: linear-gradient(160deg, #42a5f5, #7e57c2);
+    display:none; flex-direction:column; align-items:center;
+    overflow-y:auto; padding: max(4vh, env(safe-area-inset-top, 0px) + 16px) 16px 5vh;
+  }
+  #picker.on { display:flex; }
+  #picker h1 {
+    color:#fff; font-size: clamp(28px, 7.5vw, 46px); font-weight:800; text-align:center;
+    text-shadow: 0 3px 0 rgba(0,0,0,0.15); letter-spacing:1px; margin-bottom:6px;
+  }
+  #picker p {
+    color:rgba(255,255,255,0.9); font-size: clamp(16px, 4.4vw, 22px); font-weight:700;
+    text-align:center; margin-bottom:3vh; text-shadow:0 2px 0 rgba(0,0,0,0.1);
+  }
+  #chips {
+    display:grid; grid-template-columns: repeat(4, 1fr); gap:12px;
+    width:min(92vw, 460px); margin-bottom:3vh;
+  }
+  #picker h2 {
+    color:#fff; font-size: clamp(20px, 5.5vw, 32px); font-weight:800; text-align:center;
+    text-shadow: 0 3px 0 rgba(0,0,0,0.15); margin-bottom:12px;
+  }
+  #posChips {
+    display:grid; grid-template-columns: repeat(3, 1fr); gap:12px;
+    width:min(92vw, 460px); margin-bottom:4vh;
+  }
+  #posChips .chip { font-size: clamp(15px, 4.2vw, 22px); padding:12px 0; letter-spacing:1px; }
+  .chip {
+    border:none; border-radius:20px; padding:14px 0;
+    background: rgba(255,255,255,0.22); color:#fff;
+    font-family:inherit; font-size: clamp(22px, 6.5vw, 34px); font-weight:800;
+    text-shadow: 0 2px 0 rgba(0,0,0,0.15); cursor:pointer;
+    transition: transform 0.12s;
+    box-shadow: inset 0 -4px 0 rgba(0,0,0,0.12);
+  }
+  .chip.sel {
+    background:#fff; color:#5e35b1; text-shadow:none;
+    box-shadow: 0 6px 0 rgba(0,0,0,0.18);
+    animation: chippop 0.3s cubic-bezier(.2,2.2,.4,1);
+  }
+  @keyframes chippop { 50% { transform: scale(1.18); } }
+  #startBtn {
+    border:none; border-radius:999px; padding: 16px 54px;
+    background:#ffca28; color:#6d4c00;
+    font-family:inherit; font-size: clamp(26px, 7.5vw, 40px); font-weight:800;
+    cursor:pointer; box-shadow: 0 8px 0 rgba(0,0,0,0.2);
+    transition: transform 0.15s, opacity 0.2s;
+  }
+  #startBtn:active { transform: translateY(4px); }
+  #startBtn[disabled] { opacity:0.4; cursor:default; }
+</style>
+</head>
+<body>
+  <div id="rays"></div>
+  <button id="pickBtn" aria-label="Zmień głoski">🔤 Głoski</button>
+  <div id="counter">⭐ <span id="count">0</span></div>
+  <div id="title">SKRZYNIA</div>
+
+  <div id="stage">
+    <button id="chestBtn" aria-label="Skrzynia">
+      <svg viewBox="0 0 200 185">
+        <!-- glow from inside -->
+        <g id="glowBurst">
+          <circle cx="100" cy="100" r="46" fill="#fff8c8" opacity="0.95"/>
+          <circle cx="100" cy="100" r="70" fill="#ffe97a" opacity="0.45"/>
+        </g>
+        <!-- body -->
+        <g id="bodyG">
+          <rect x="22" y="78" width="156" height="88" rx="14" class="c-body"/>
+          <rect x="34" y="86" width="132" height="70" rx="9" class="c-inner"/>
+          <rect x="34" y="104" width="132" height="7" class="c-plank" opacity="0.5"/>
+          <rect x="34" y="126" width="132" height="7" class="c-plank" opacity="0.5"/>
+          <!-- side straps -->
+          <rect x="40" y="72" width="22" height="100" rx="10" class="c-trim"/>
+          <rect x="138" y="72" width="22" height="100" rx="10" class="c-trim"/>
+          <rect x="40" y="72" width="22" height="100" rx="10" fill="rgba(0,0,0,0.08)" transform="translate(0,4)"/>
+        </g>
+        <!-- lid -->
+        <g id="lidG">
+          <path d="M22 82 Q22 40 62 38 L138 38 Q178 40 178 82 L178 90 L22 90 Z" class="c-lid"/>
+          <path d="M40 84 Q42 52 70 50 L130 50 Q158 52 160 84 L160 88 L40 88 Z" class="c-lidin"/>
+          <rect x="40" y="34" width="22" height="54" rx="10" class="c-trim"/>
+          <rect x="138" y="34" width="22" height="54" rx="10" class="c-trim"/>
+        </g>
+        <!-- lock -->
+        <g id="lockG">
+          <ellipse cx="100" cy="96" rx="26" ry="22" class="c-trim"/>
+          <path d="M84 96 Q84 82 100 82 Q116 82 116 96 Q116 112 100 114 Q84 112 84 96 Z" fill="#fff"/>
+        </g>
+      </svg>
+    </button>
+    <div id="prize"><div id="pEmoji"></div><div id="pWord"></div></div>
+    <div id="bravo">BRAWO! 🎉</div>
+  </div>
+
+  <div id="dots">
+    <div class="dot"><svg viewBox="0 0 100 100"><path d="M50 78 L50 30 M30 48 L50 28 L70 48"/></svg></div>
+    <div class="dot"><svg viewBox="0 0 100 100"><path d="M50 78 L50 30 M30 48 L50 28 L70 48"/></svg></div>
+    <div class="dot"><svg viewBox="0 0 100 100"><path d="M50 78 L50 30 M30 48 L50 28 L70 48"/></svg></div>
+  </div>
+  <div id="hint">Naciśnij skrzynię 3 razy!</div>
+
+  <div id="flash"></div>
+  <canvas id="fx"></canvas>
+
+  <div id="picker" class="on">
+    <h1>🔤 Jaką głoskę ćwiczymy?</h1>
+    <p>Wybierz jedną lub kilka głosek — nagrody będą je ćwiczyć</p>
+    <div id="chips"></div>
+    <h2>📍 Gdzie ma być głoska?</h2>
+    <div id="posChips"></div>
+    <button id="startBtn" disabled>GRAMY! 🎉</button>
+  </div>
+
+<script>
+(function(){
+  'use strict';
+
+  // ── themes: each chest a new colour ─────────────────────────
+  var THEMES = [
+    { name:'ZŁOTA SKRZYNIA',     bg:'#4fc3f7', accent:'#2e9be6', body:'#ffca28', inner:'#42a5f5', plank:'#1e88e5', lid:'#ffd54f', lidin:'#64b5f6', trim:'#ffb300' },
+    { name:'FIOLETOWA SKRZYNIA', bg:'#9575cd', accent:'#7e57c2', body:'#7e57c2', inner:'#5e35b1', plank:'#4527a0', lid:'#9575cd', lidin:'#673ab7', trim:'#ffca28' },
+    { name:'ZIELONA SKRZYNIA',   bg:'#66bb6a', accent:'#43a047', body:'#43a047', inner:'#2e7d32', plank:'#1b5e20', lid:'#66bb6a', lidin:'#388e3c', trim:'#ffca28' },
+    { name:'CZERWONA SKRZYNIA',  bg:'#ef5350', accent:'#e53935', body:'#e53935', inner:'#c62828', plank:'#b71c1c', lid:'#ef5350', lidin:'#d32f2f', trim:'#ffca28' },
+    { name:'RÓŻOWA SKRZYNIA',    bg:'#f06292', accent:'#ec407a', body:'#ec407a', inner:'#d81b60', plank:'#ad1457', lid:'#f06292', lidin:'#e91e63', trim:'#ffca28' },
+    { name:'NIEBIESKA SKRZYNIA', bg:'#5c6bc0', accent:'#3f51b5', body:'#3f51b5', inner:'#303f9f', plank:'#283593', lid:'#5c6bc0', lidin:'#3949ab', trim:'#ffca28' },
+    { name:'POMARAŃCZOWA SKRZYNIA', bg:'#ffa726', accent:'#fb8c00', body:'#fb8c00', inner:'#ef6c00', plank:'#e65100', lid:'#ffa726', lidin:'#f57c00', trim:'#ffe082' },
+    { name:'TĘCZOWA SKRZYNIA',   bg:'#26c6da', accent:'#00acc1', body:'#ab47bc', inner:'#26c6da', plank:'#0097a7', lid:'#ffca28', lidin:'#4dd0e1', trim:'#ff7043' }
+  ];
+
+  // ── logopedic word bank: phoneme → [word, emoji] ─────────────
+  var PHONEMES = {
+    'SZ': [['szalik','🧣'],['szyszka','🌰'],['gruszka','🍐'],['mysz','🐭'],['kosz','🧺'],['muszla','🐚'],['koszula','👕'],['kalosze','👢']],
+    'Ż':  [['żaba','🐸'],['żyrafa','🦒'],['żarówka','💡'],['jeż','🦔'],['róża','🌹'],['morze','🌊'],['nożyczki','✂️'],['wieża','🗼']],
+    'CZ': [['czapka','🧢'],['czekolada','🍫'],['czajnik','🫖'],['czereśnie','🍒'],['czosnek','🧄'],['tęcza','🌈'],['klucz','🔑'],['oczy','👀']],
+    'S':  [['sowa','🦉'],['słoń','🐘'],['ser','🧀'],['sok','🧃'],['samolot','✈️'],['sanki','🛷'],['słońce','☀️'],['ananas','🍍'],['masło','🧈'],['autobus','🚌']],
+    'Z':  [['zebra','🦓'],['zamek','🏰'],['zegar','⏰'],['zając','🐰'],['koza','🐐'],['gwiazda','⭐'],['arbuz','🍉'],['wazon','🏺']],
+    'C':  [['cebula','🧅'],['cytryna','🍋'],['cukierek','🍬'],['owca','🐑'],['plecak','🎒'],['pajac','🤡'],['serce','❤️'],['noc','🌙']],
+    'R':  [['rower','🚲'],['ryba','🐟'],['rak','🦀'],['rakieta','🚀'],['robot','🤖'],['krowa','🐮'],['traktor','🚜'],['korona','👑'],['zegar','⏰']],
+    'L':  [['lalka','🪆'],['lew','🦁'],['lody','🍦'],['lis','🦊'],['balon','🎈'],['motyl','🦋'],['telefon','📱'],['lupa','🔍']],
+    'K':  [['kot','🐱'],['kura','🐔'],['koń','🐴'],['kaczka','🦆'],['kwiatek','🌸'],['klocki','🧱'],['kanapka','🥪'],['okulary','👓'],['smok','🐉']],
+    'G':  [['gitara','🎸'],['gruszka','🍐'],['góra','⛰️'],['gęś','🪿'],['garnek','🍲'],['waga','⚖️'],['noga','🦵'],['guzik','🔘']],
+    'P':  [['pies','🐶'],['pomidor','🍅'],['piłka','⚽'],['pizza','🍕'],['papuga','🦜'],['pociąg','🚂'],['pająk','🕷️'],['mapa','🗺️'],['sklep','🏪']],
+    'B':  [['banan','🍌'],['buty','👟'],['bałwan','⛄'],['biedronka','🐞'],['baran','🐏'],['bęben','🥁'],['balon','🎈'],['zęby','🦷'],['chleb','🍞']],
+    'T':  [['tort','🎂'],['tygrys','🐯'],['tulipan','🌷'],['telefon','📱'],['traktor','🚜'],['auto','🚗'],['moneta','🪙'],['kot','🐱']],
+    'D':  [['dom','🏠'],['dinozaur','🦖'],['delfin','🐬'],['dynia','🎃'],['woda','💧'],['drabina','🪜'],['duch','👻']],
+    'F':  [['foka','🦭'],['flaga','🚩'],['farby','🎨'],['fotel','🛋️'],['fontanna','⛲'],['frytki','🍟'],['telefon','📱'],['elf','🧝']],
+    'W':  [['wąż','🐍'],['wilk','🐺'],['wanna','🛁'],['wiadro','🪣'],['winogrona','🍇'],['wiewiórka','🐿️'],['wulkan','🌋'],['waga','⚖️'],['kawa','☕']]
+  };
+  var PHONEME_ORDER = ['SZ','Ż','CZ','S','Z','C','R','L','K','G','P','B','T','D','F','W'];
+  // which letter groups count as the practised sound inside a word
+  var MATCHERS = { 'Ż': ['ż','rz'] };
+
+  var chestBtn = document.getElementById('chestBtn');
+  var titleEl = document.getElementById('title');
+  var hintEl = document.getElementById('hint');
+  var prizeEl = document.getElementById('prize');
+  var pEmojiEl = document.getElementById('pEmoji');
+  var pWordEl = document.getElementById('pWord');
+  var bravoEl = document.getElementById('bravo');
+  var raysEl = document.getElementById('rays');
+  var flashEl = document.getElementById('flash');
+  var countEl = document.getElementById('count');
+  var pickerEl = document.getElementById('picker');
+  var chipsEl = document.getElementById('chips');
+  var startBtn = document.getElementById('startBtn');
+  var pickBtn = document.getElementById('pickBtn');
+  var dots = Array.prototype.slice.call(document.querySelectorAll('.dot'));
+
+  var chestIndex = 0, taps = 0, opened = 0, isOpen = false;
+  var transitioning = false, openedAt = 0;
+  var selected = [], selectedPos = [], bag = [], pickerOpen = true;
+  var POSITIONS = [['start','POCZĄTEK'],['middle','ŚRODEK'],['end','KONIEC']];
+
+  // ── phoneme picker ───────────────────────────────────────────
+  try { selected = JSON.parse(localStorage.getItem('sk_gloski') || '[]'); } catch(e){ selected = []; }
+  if (!(selected instanceof Array)) selected = [];
+  selected = selected.filter(function(k){ return PHONEMES[k]; });
+
+  try { selectedPos = JSON.parse(localStorage.getItem('sk_pozycje') || 'null'); } catch(e){ selectedPos = null; }
+  if (!(selectedPos instanceof Array)) selectedPos = null;
+  var POS_KEYS = POSITIONS.map(function(p){ return p[0]; });
+  if (selectedPos) selectedPos = selectedPos.filter(function(k){ return POS_KEYS.indexOf(k) >= 0; });
+  if (!selectedPos || !selectedPos.length) selectedPos = POS_KEYS.slice(); // default: everywhere
+
+  function refreshStart(){ startBtn.disabled = selected.length === 0 || selectedPos.length === 0; }
+
+  PHONEME_ORDER.forEach(function(key){
+    var b = document.createElement('button');
+    b.className = 'chip' + (selected.indexOf(key) >= 0 ? ' sel' : '');
+    b.textContent = key;
+    b.addEventListener('pointerdown', function(){
+      var i = selected.indexOf(key);
+      if (i >= 0) { selected.splice(i, 1); b.classList.remove('sel'); }
+      else { selected.push(key); b.classList.add('sel'); sndChip(); }
+      refreshStart();
+    });
+    chipsEl.appendChild(b);
+  });
+
+  var posChipsEl = document.getElementById('posChips');
+  POSITIONS.forEach(function(pos){
+    var b = document.createElement('button');
+    b.className = 'chip' + (selectedPos.indexOf(pos[0]) >= 0 ? ' sel' : '');
+    b.textContent = pos[1];
+    b.addEventListener('pointerdown', function(){
+      var i = selectedPos.indexOf(pos[0]);
+      if (i >= 0) { selectedPos.splice(i, 1); b.classList.remove('sel'); }
+      else { selectedPos.push(pos[0]); b.classList.add('sel'); sndChip(); }
+      refreshStart();
+    });
+    posChipsEl.appendChild(b);
+  });
+  refreshStart();
+
+  function shuffle(a){
+    for (var i = a.length - 1; i > 0; i--){
+      var j = (Math.random() * (i + 1)) | 0, t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+  // where the practised phoneme sits in the word: start / middle / end
+  function findMatch(word, key){
+    var pats = MATCHERS[key] || [key.toLowerCase()];
+    var lo = word.toLowerCase(), best = -1, len = 0;
+    for (var i = 0; i < pats.length; i++){
+      var idx = lo.indexOf(pats[i]);
+      if (idx >= 0 && (best < 0 || idx < best)) { best = idx; len = pats[i].length; }
+    }
+    return { idx: best, len: len };
+  }
+  function wordPos(word, key){
+    var m = findMatch(word, key);
+    if (m.idx < 0) return 'middle';
+    if (m.idx === 0) return 'start';
+    if (m.idx + m.len === word.length) return 'end';
+    return 'middle';
+  }
+  function buildBag(){
+    bag = [];
+    selected.forEach(function(k){
+      PHONEMES[k].forEach(function(we){
+        if (selectedPos.indexOf(wordPos(we[0], k)) >= 0) bag.push({ w: we[0], e: we[1], k: k });
+      });
+    });
+    // no words match this phoneme+position combo: fall back to all positions
+    if (!bag.length){
+      selected.forEach(function(k){
+        PHONEMES[k].forEach(function(we){ bag.push({ w: we[0], e: we[1], k: k }); });
+      });
+    }
+    shuffle(bag);
+  }
+  function nextPrize(){
+    if (!bag.length) buildBag();
+    return bag.pop();
+  }
+
+  startBtn.addEventListener('click', function(){
+    if (!selected.length) return;
+    try {
+      localStorage.setItem('sk_gloski', JSON.stringify(selected));
+      localStorage.setItem('sk_pozycje', JSON.stringify(selectedPos));
+    } catch(e){}
+    buildBag();
+    pickerEl.classList.remove('on');
+    pickerOpen = false;
+    ctx(); // user gesture: unlock audio
+    sndNext();
+  });
+  pickBtn.addEventListener('pointerdown', function(e){
+    e.stopPropagation();
+    pickerOpen = true;
+    pickerEl.classList.add('on');
+  });
+
+  // highlight the practised phoneme inside the word (uppercase display)
+  function wordHtml(word, key){
+    var m = findMatch(word, key);
+    var up = word.toUpperCase();
+    if (m.idx < 0) return up;
+    return up.slice(0, m.idx) + '<span class="hl">' + up.slice(m.idx, m.idx + m.len) + '</span>' + up.slice(m.idx + m.len);
+  }
+
+  // ── speech: the phone says the word out loud ─────────────────
+  function say(word){
+    try {
+      if (!window.speechSynthesis) return;
+      speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(word);
+      u.lang = 'pl-PL'; u.rate = 0.8; u.pitch = 1.1;
+      speechSynthesis.speak(u);
+    } catch(e){}
+  }
+
+  // ── theme application ────────────────────────────────────────
+  function setFill(cls, col){
+    var els = document.querySelectorAll('.' + cls);
+    for (var i = 0; i < els.length; i++) els[i].setAttribute('fill', col);
+  }
+  function applyTheme(th){
+    document.body.style.setProperty('--bg', th.bg);
+    document.body.style.setProperty('--accent', th.accent);
+    setFill('c-body', th.body); setFill('c-inner', th.inner);
+    setFill('c-plank', th.plank); setFill('c-lid', th.lid);
+    setFill('c-lidin', th.lidin); setFill('c-trim', th.trim);
+    titleEl.textContent = th.name;
+    titleEl.style.animation = 'none';
+    void titleEl.offsetWidth;
+    titleEl.style.animation = '';
+  }
+
+  // ── sounds (Web Audio, no files) ─────────────────────────────
+  var AC = null;
+  function ctx(){
+    if (!AC) { var C = window.AudioContext || window.webkitAudioContext; if (C) AC = new C(); }
+    if (AC && AC.state === 'suspended') AC.resume();
+    return AC;
+  }
+  function tone(freq, dur, type, vol, when, slide){
+    var ac = ctx(); if (!ac) return;
+    var t = ac.currentTime + (when || 0);
+    var o = ac.createOscillator(), g = ac.createGain();
+    o.type = type || 'sine'; o.frequency.setValueAtTime(freq, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(slide, t + dur);
+    g.gain.setValueAtTime(vol || 0.2, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(ac.destination);
+    o.start(t); o.stop(t + dur + 0.05);
+  }
+  function sndTap(n){
+    tone(300 + n * 140, 0.12, 'square', 0.12);
+    tone(600 + n * 200, 0.18, 'sine', 0.18, 0, 1200 + n * 300);
+  }
+  function sndOpen(){
+    var notes = [523, 659, 784, 1047, 1319];
+    for (var i = 0; i < notes.length; i++) tone(notes[i], 0.35, 'triangle', 0.2, i * 0.09);
+    tone(180, 0.5, 'sawtooth', 0.08, 0, 60);
+  }
+  function sndNext(){ tone(400, 0.15, 'sine', 0.15, 0, 900); }
+  function sndChip(){ tone(700, 0.1, 'sine', 0.15, 0, 1100); }
+  function buzz(p){ if (navigator.vibrate) try { navigator.vibrate(p); } catch(e){} }
+
+  // ── confetti / particle canvas ───────────────────────────────
+  var fx = document.getElementById('fx'), fc = fx.getContext('2d');
+  var parts = [], running = false;
+  function sizeFx(){ fx.width = innerWidth * devicePixelRatio; fx.height = innerHeight * devicePixelRatio; fc.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0); }
+  addEventListener('resize', sizeFx); sizeFx();
+
+  var CONF = ['#ffd54f','#4fc3f7','#ef5350','#66bb6a','#ab47bc','#ff7043','#fff','#f06292'];
+  function spawnConfetti(x, y, n, power){
+    for (var i = 0; i < n; i++){
+      var a = Math.random() * Math.PI * 2, sp = (0.35 + Math.random() * 0.65) * power;
+      parts.push({
+        x:x, y:y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp - power*0.55,
+        w:6+Math.random()*8, h:4+Math.random()*6, rot:Math.random()*Math.PI, vr:(Math.random()-0.5)*0.35,
+        col:CONF[(Math.random()*CONF.length)|0], life:1, decay:0.006+Math.random()*0.008, shape:Math.random()<0.25?'circle':'rect'
+      });
+    }
+    if (!running){ running = true; requestAnimationFrame(step); }
+  }
+  function spawnSparks(x, y, n){
+    for (var i = 0; i < n; i++){
+      var a = Math.random()*Math.PI*2, sp = 2+Math.random()*5;
+      parts.push({ x:x, y:y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp-2, w:4, h:4, rot:0, vr:0,
+        col:'#fff', life:1, decay:0.03+Math.random()*0.03, shape:'circle' });
+    }
+    if (!running){ running = true; requestAnimationFrame(step); }
+  }
+  function step(){
+    fc.clearRect(0, 0, innerWidth, innerHeight);
+    for (var i = parts.length - 1; i >= 0; i--){
+      var p = parts[i];
+      p.vy += 0.28; p.vx *= 0.99; p.x += p.vx; p.y += p.vy; p.rot += p.vr; p.life -= p.decay;
+      if (p.life <= 0 || p.y > innerHeight + 40){ parts.splice(i, 1); continue; }
+      fc.save(); fc.globalAlpha = Math.max(0, p.life); fc.translate(p.x, p.y); fc.rotate(p.rot);
+      fc.fillStyle = p.col;
+      if (p.shape === 'circle'){ fc.beginPath(); fc.arc(0, 0, p.w/2, 0, 7); fc.fill(); }
+      else fc.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+      fc.restore();
+    }
+    if (parts.length){ requestAnimationFrame(step); } else { running = false; fc.clearRect(0,0,innerWidth,innerHeight); }
+  }
+
+  // ── ambient sparkles around the chest ────────────────────────
+  var stage = document.getElementById('stage');
+  var AMB_POS = [[12,20],[85,15],[8,70],[90,65],[20,45],[78,42]];
+  for (var ai = 0; ai < AMB_POS.length; ai++){
+    var s = document.createElement('div');
+    s.className = 'amb'; s.textContent = ai % 2 ? '✦' : '✧';
+    s.style.left = AMB_POS[ai][0] + '%'; s.style.top = AMB_POS[ai][1] + '%';
+    s.style.fontSize = (18 + (ai * 7) % 22) + 'px';
+    s.style.animationDelay = (ai * 0.7) + 's';
+    stage.appendChild(s);
+  }
+
+  function chestCenter(){
+    var r = chestBtn.getBoundingClientRect();
+    return { x: r.left + r.width/2, y: r.top + r.height/2 };
+  }
+
+  // ── game flow ────────────────────────────────────────────────
+  // Taps register on pointerdown with no cooldown, so mashing the chest
+  // never drops input; only the prize screen holds an 800 ms grace period
+  // so rapid taps can't skip past the reward.
+  function onTap(){
+    ctx(); // unlock audio on user gesture
+    if (pickerOpen || transitioning) return;
+    if (isOpen){ if (Date.now() - openedAt > 800) nextChest(); return; }
+    taps++;
+    var c = chestCenter();
+    chestBtn.classList.remove('shake1','shake2');
+    void chestBtn.offsetWidth;
+
+    if (taps < 3){
+      chestBtn.classList.add(taps === 1 ? 'shake1' : 'shake2');
+      dots[taps-1].classList.add('done');
+      sndTap(taps);
+      buzz(30);
+      spawnSparks(c.x, c.y - 20, 10 + taps * 8);
+    } else {
+      dots[2].classList.add('done');
+      openChest(c);
+    }
+  }
+
+  function openChest(c){
+    isOpen = true;
+    opened++;
+    countEl.textContent = opened;
+    sndOpen();
+    buzz([60, 40, 120]);
+
+    chestBtn.classList.add('opened', 'open');
+    flashEl.classList.remove('go'); void flashEl.offsetWidth; flashEl.classList.add('go');
+    raysEl.classList.add('on');
+
+    spawnConfetti(c.x, c.y - 30, 90, 14);
+    setTimeout(function(){ spawnConfetti(c.x - 80, c.y, 40, 10); spawnConfetti(c.x + 80, c.y, 40, 10); }, 180);
+
+    var prize = nextPrize();
+    pEmojiEl.textContent = prize.e;
+    pWordEl.innerHTML = wordHtml(prize.w, prize.k);
+    prizeEl.classList.remove('show'); void prizeEl.offsetWidth; prizeEl.classList.add('show');
+    bravoEl.classList.remove('show'); void bravoEl.offsetWidth; bravoEl.classList.add('show');
+    hintEl.textContent = 'Powiedzcie razem: ' + prize.w.toUpperCase() + '!';
+    setTimeout(function(){ say(prize.w); }, 650);
+
+    openedAt = Date.now();
+    // auto-advance for little fingers that wander off
+    clearTimeout(openChest._t);
+    openChest._t = setTimeout(function(){ if (isOpen) nextChest(); }, 9000);
+  }
+
+  function nextChest(){
+    clearTimeout(openChest._t);
+    isOpen = false; transitioning = true; taps = 0;
+    sndNext();
+    buzz(20);
+    prizeEl.classList.remove('show');
+    bravoEl.classList.remove('show');
+    raysEl.classList.remove('on');
+    chestBtn.classList.remove('opened', 'open', 'shake1', 'shake2');
+    for (var i = 0; i < 3; i++) dots[i].classList.remove('done');
+    chestIndex = (chestIndex + 1) % THEMES.length;
+    applyTheme(THEMES[chestIndex]);
+    hintEl.textContent = 'Naciśnij skrzynię 3 razy!';
+    setTimeout(function(){ transitioning = false; }, 350);
+  }
+
+  chestBtn.addEventListener('pointerdown', function(e){ e.preventDefault(); onTap(); });
+  // when the chest is open, tapping anywhere gives the next one
+  document.body.addEventListener('pointerdown', function(e){
+    if (pickerOpen) return;
+    if (isOpen && !chestBtn.contains(e.target) && Date.now() - openedAt > 800) nextChest();
+  });
+  chestBtn.addEventListener('click', function(e){ e.preventDefault(); });
+  document.addEventListener('dblclick', function(e){ e.preventDefault(); });
+
+  applyTheme(THEMES[0]);
+})();
+</script>
+</body>
+</html>
