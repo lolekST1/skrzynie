@@ -95,6 +95,14 @@
   .card .lab { font-size: clamp(26px, 7vw, 38px); font-weight:800; letter-spacing:1px; text-shadow:0 2px 0 rgba(0,0,0,0.18); }
   .card .desc { font-size: clamp(14px, 3.6vw, 18px); font-weight:700; opacity:0.92; }
   .card .txt { display:flex; flex-direction:column; gap:2px; }
+  /* compact 2-column grid view (toggled from the hub) */
+  #cards.grid { display:grid; grid-template-columns: repeat(2, 1fr); gap:12px; width:min(94vw, 460px); }
+  #cards.grid .card { flex-direction:column; align-items:center; text-align:center; gap:6px; padding:16px 10px; border-radius:22px; }
+  #cards.grid .card .txt { align-items:center; gap:0; }
+  #cards.grid .card .desc { display:none; }
+  #cards.grid .card .ic { font-size: clamp(38px, 12vw, 52px); }
+  #cards.grid .card .lab { font-size: clamp(15px, 4.4vw, 21px); letter-spacing:0.5px; }
+  #layoutToggle { font-size:16px; padding:8px 14px; }
   #cardChest  { background: linear-gradient(135deg,#ffca28,#fb8c00); }
   #cardPuzzle { background: linear-gradient(135deg,#26c6da,#3f51b5); }
   #cardScratch{ background: linear-gradient(135deg,#ec407a,#ab47bc); }
@@ -521,27 +529,35 @@
     display:grid; grid-template-columns: repeat(3, 1fr); gap: clamp(10px, 3vw, 22px);
     width:min(94vw, 460px);
   }
+  /* a mound of ground with a hole; the animal rises up and pokes well above the
+     rim. Layers (by z-index): back opening < mole < front dirt lip. The tile
+     clips (overflow:hidden) so the hidden mole below stays out of sight. */
   .wmHole {
-    position:relative; aspect-ratio:1/1; border-radius:50%;
-    background: radial-gradient(circle at 50% 35%, #6d4c41 0%, #4e342e 60%, #3e2723 100%);
-    box-shadow: inset 0 -8px 14px rgba(0,0,0,0.45), inset 0 6px 10px rgba(0,0,0,0.3);
-    overflow:hidden; cursor:pointer;
+    position:relative; aspect-ratio:1/1; border-radius:26px; overflow:hidden; cursor:pointer;
+    background: linear-gradient(180deg, #a1887f 0%, #8d6e63 38%, #6d4c41 100%);
   }
-  .wmHole::after { /* dirt lip */
-    content:''; position:absolute; left:-6%; right:-6%; bottom:-14%; height:46%;
-    background: radial-gradient(ellipse at 50% 0%, #8d6e63 0%, #6d4c41 70%, transparent 72%);
+  .wmBack { /* dark hole opening (lower half) */
+    position:absolute; left:11%; right:11%; bottom:6%; height:56%; border-radius:50%; z-index:1;
+    background: radial-gradient(ellipse at 50% 32%, #241009 0%, #3e2723 58%, #4e342e 100%);
+    box-shadow: inset 0 7px 13px rgba(0,0,0,0.6);
     pointer-events:none;
   }
   .wmMole {
-    position:absolute; left:0; right:0; bottom:6%; margin:auto;
-    display:flex; align-items:center; justify-content:center; line-height:1;
-    font-size: clamp(40px, 12vw, 74px);
-    transform: translateY(120%); transition: transform 0.16s cubic-bezier(.2,1.6,.4,1);
+    position:absolute; left:0; right:0; bottom:9%; margin:auto; z-index:2;
+    display:flex; align-items:flex-end; justify-content:center; line-height:1;
+    font-size: clamp(56px, 18vw, 104px);
+    transform: translateY(135%); transition: transform 0.16s cubic-bezier(.2,1.6,.4,1);
     will-change: transform; pointer-events:none;
   }
   .wmHole.up .wmMole { transform: translateY(0); }
+  .wmFront { /* front dirt lip that the animal emerges from behind */
+    position:absolute; left:4%; right:4%; bottom:-2%; height:30%; z-index:3; border-radius:50% / 78%;
+    background: linear-gradient(180deg, #a1887f 0%, #795548 60%, #5d4037 100%);
+    box-shadow: inset 0 4px 7px rgba(255,255,255,0.15), 0 -3px 8px rgba(0,0,0,0.28);
+    pointer-events:none;
+  }
   .wmHole.bonk .wmMole { animation: wmbonk 0.3s ease-out; }
-  @keyframes wmbonk { 0% { transform: translateY(0) scale(1); } 50% { transform: translateY(0) scale(0.7) rotate(-8deg); } 100% { transform: translateY(120%); } }
+  @keyframes wmbonk { 0% { transform: translateY(0) scale(1); } 45% { transform: translateY(0) scale(0.72) rotate(-8deg); } 100% { transform: translateY(135%); } }
 
   /* ══════════════ POLICZ! (counting) ══════════════ */
   #countArea { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap: clamp(12px, 3vh, 28px); width:100%; padding:0 12px; }
@@ -582,10 +598,10 @@
 
   /* ══════════════ KOLORY (color sort) ══════════════ */
   #sortArea { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap: clamp(16px, 4vh, 40px); width:100%; padding:0 12px; }
-  #sortItemWrap { min-height: clamp(90px, 26vw, 150px); display:flex; align-items:center; justify-content:center; }
+  #sortItemWrap { min-height: clamp(96px, 28vw, 160px); display:flex; align-items:center; justify-content:center; }
   #sortItem {
-    width: clamp(86px, 26vw, 140px); height: clamp(86px, 26vw, 140px); border-radius:50%;
-    box-shadow: inset 0 -10px 16px rgba(0,0,0,0.22), 0 10px 22px rgba(0,0,0,0.25);
+    line-height:1; font-size: clamp(78px, 26vw, 140px);
+    filter: drop-shadow(0 8px 12px rgba(0,0,0,0.28));
     animation: shin 0.4s cubic-bezier(.2,1.7,.35,1);
   }
   #sortBaskets { display:flex; flex-wrap:wrap; gap: clamp(10px, 3vw, 20px); justify-content:center; align-items:flex-end; width:min(96vw, 560px); }
@@ -638,6 +654,7 @@
 
   <!-- ══════════════ HUB ══════════════ -->
   <div id="hub" class="screen on">
+    <button id="layoutToggle" class="topbtn right" aria-label="Zmień widok">▦ Siatka</button>
     <div class="gtitle">🎪 GIERKI</div>
     <div class="sub">Wybierz zabawę!</div>
     <div id="cards">
@@ -1194,7 +1211,7 @@
   // has grabbed the audio session keeps speech synthesis silent (it never even
   // starts — no onstart/onerror). Suspending isn't always enough, so we CLOSE
   // the context for the duration of the word; ctx() lazily recreates it after.
-  function speakUnblocked(u){
+  function speakUnblocked(u, safetyMs){
     var restored = false;
     function restore(){ if (restored) return; restored = true; ttsActive = false; }
     var origStart = u.onstart, origEnd = u.onend, origErr = u.onerror;
@@ -1206,12 +1223,21 @@
     try { speechSynthesis.cancel(); } catch(e){}
     try { speechSynthesis.speak(u); speechSynthesis.resume(); } catch(e){}
     setTimeout(function(){ try { speechSynthesis.resume(); } catch(e){} }, 90);
-    setTimeout(restore, 6000); // safety: never leave game sound muted
+    setTimeout(restore, safetyMs || 6000); // safety: never leave game sound muted
   }
+  // Prime speech inside a user gesture. iOS often needs several nudges before the
+  // engine wakes (and voices load late), and the first prime can silently fail —
+  // so retry on later gestures until it's confirmed working, throttled and capped
+  // so a permanently-broken engine can't keep muting game sound. The audible "ok"
+  // is only ever heard once, on the tap where speech finally starts working.
+  var speechPrimeTries = 0, speechPrimeLast = 0;
   function primeSpeech(){
-    if (speechPrimed || !window.speechSynthesis) return;
-    speechPrimed = true;
-    try { loadVoices(); speakUnblocked(makeUtter('ok')); } catch(e){}
+    if (!window.speechSynthesis || speechWorks === true) return;
+    try { speechSynthesis.resume(); } catch(e){}
+    var now = Date.now();
+    if (now - speechPrimeLast < 1500 || speechPrimeTries >= 8) return;
+    speechPrimeLast = now; speechPrimeTries++;
+    try { loadVoices(); speakUnblocked(makeUtter('ok'), 1200); } catch(e){}
   }
   function say(word){
     try { if (window.speechSynthesis) speakUnblocked(makeUtter(word)); } catch(e){}
@@ -1221,8 +1247,16 @@
 
   // sounds (Web Audio, no files)
   var AC = null;
+  // iOS/Safari starts a fresh AudioContext "muted" until a buffer is actually
+  // played — that's the "first sounds silent until I press volume up" symptom.
+  // Playing a 1-sample silent buffer the moment a context is (re)created inside a
+  // user gesture wakes the output. speakUnblocked() closes the context to free the
+  // audio route for speech, so we re-kick every time ctx() rebuilds it.
+  function acKick(ac){
+    try { var b = ac.createBuffer(1, 1, 22050); var s = ac.createBufferSource(); s.buffer = b; s.connect(ac.destination); s.start(0); } catch(e){}
+  }
   function ctx(){
-    if (!AC || AC.state === 'closed') { var C = window.AudioContext || window.webkitAudioContext; if (C) AC = new C(); }
+    if (!AC || AC.state === 'closed') { var C = window.AudioContext || window.webkitAudioContext; if (C){ AC = new C(); acKick(AC); } }
     // don't grab the audio route back while a word is being spoken (iOS)
     if (AC && AC.state === 'suspended' && !ttsActive) AC.resume();
     return AC;
@@ -1366,6 +1400,19 @@
   document.getElementById('cardSort').addEventListener('pointerdown', function(e){ e.preventDefault(); ctx(); openSortGame(); });
   document.getElementById('cardMaze').addEventListener('pointerdown', function(e){ e.preventDefault(); ctx(); openMazeGame(); });
   document.getElementById('cardSimon').addEventListener('pointerdown', function(e){ e.preventDefault(); ctx(); openSimonGame(); });
+
+  // hub layout: list (default) or compact 2-column grid, persisted (sk_layout)
+  var cardsEl = document.getElementById('cards');
+  var layoutToggle = document.getElementById('layoutToggle');
+  function applyLayout(grid){
+    cardsEl.classList.toggle('grid', grid);
+    layoutToggle.textContent = grid ? '☰ Lista' : '▦ Siatka';
+    try { localStorage.setItem('sk_layout', grid ? 'grid' : 'list'); } catch(e){}
+  }
+  layoutToggle.addEventListener('pointerdown', function(e){
+    e.preventDefault(); e.stopPropagation();
+    applyLayout(!cardsEl.classList.contains('grid'));
+  });
 
   // ══════════════════════════════════════════════════════════════
   //  CHEST GAME
@@ -2400,8 +2447,11 @@
     if (whack.built) return; whack.built = true;
     for (var i = 0; i < 6; i++){
       var h = document.createElement('div'); h.className = 'wmHole';
+      var back = document.createElement('div'); back.className = 'wmBack';
       var m = document.createElement('div'); m.className = 'wmMole';
-      h.appendChild(m); whackGrid.appendChild(h);
+      var front = document.createElement('div'); front.className = 'wmFront';
+      h.appendChild(back); h.appendChild(m); h.appendChild(front);
+      whackGrid.appendChild(h);
       whack.holes.push({ el:h, mole:m, up:false, hideT:0 });
     }
     whackGrid.addEventListener('pointerdown', function(e){
@@ -2580,10 +2630,15 @@
   var sortBravo = document.getElementById('sortBravo');
   var sortHint = document.getElementById('sortHint');
   var sortArea = document.getElementById('sortArea');
+  // each colour has several strongly single-coloured emoji (heart/circle/square +
+  // objects) so the item's SHAPE varies while its colour stays unambiguous
   var SORT_COLORS = [
-    { name:'czerwony', col:'#ef5350' }, { name:'niebieski', col:'#42a5f5' },
-    { name:'żółty', col:'#ffca28' },    { name:'zielony', col:'#66bb6a' },
-    { name:'fioletowy', col:'#ab47bc' },{ name:'pomarańczowy', col:'#ff9800' }
+    { name:'czerwony',     col:'#ef5350', ems:['❤️','🔴','🟥','🍎','🍓','🌹'] },
+    { name:'niebieski',    col:'#42a5f5', ems:['💙','🔵','🟦','🫐','💎','🧊'] },
+    { name:'żółty',        col:'#ffca28', ems:['💛','🟡','🟨','⭐','🍋','🧀'] },
+    { name:'zielony',      col:'#66bb6a', ems:['💚','🟢','🟩','🍏','🥦','🐸'] },
+    { name:'fioletowy',    col:'#ab47bc', ems:['💜','🟣','🟪','🍇','🍆','🔮'] },
+    { name:'pomarańczowy', col:'#ff9800', ems:['🧡','🟠','🟧','🍊','🥕','🏀'] }
   ];
   var sort = { count:3, target:0, palette:[], solved:false, solvedAt:0, lock:false };
   try { var sn = parseInt(localStorage.getItem('sk_sort') || '0', 10); if (sn >= 2 && sn <= 4) sort.count = sn; } catch(e){}
@@ -2604,8 +2659,9 @@
     sort.target = sort.palette[(Math.random() * sort.palette.length) | 0];
     sortBravo.classList.remove('show');
     sortHint.textContent = 'Do którego koszyka pasuje kolor?';
-    // solid colour base + a small glossy highlight (colour must read clearly)
-    sortItem.style.background = 'radial-gradient(circle at 36% 30%, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0) 34%), ' + SORT_COLORS[sort.target].col;
+    // a random shape in the target colour (varies each round)
+    var ems = SORT_COLORS[sort.target].ems;
+    sortItem.textContent = ems[(Math.random() * ems.length) | 0];
     sortItem.style.animation = 'none'; void sortItem.offsetWidth; sortItem.style.animation = '';
     sortBaskets.innerHTML = '';
     sort.palette.forEach(function(ci){
@@ -2836,6 +2892,8 @@
   markCzChips();
   markOzChips();
   markSzcChips();
+  var _lay = 'list'; try { _lay = localStorage.getItem('sk_layout') || 'list'; } catch(e){}
+  applyLayout(_lay === 'grid');
   show('hub');
 })();
 </script>

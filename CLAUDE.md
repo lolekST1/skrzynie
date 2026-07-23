@@ -58,10 +58,10 @@ Mini-games:
 - **CO NIE PASUJE?** (`#oddGame`) — odd-one-out. A grid of one repeated emoji with a single
   different tile; tap the different one. Grid **2×2 / 3×2 / 3×3** via chips (`sk_odd`). Mirrors
   the solve/advance + speech flow (says the odd picture's word).
-- **KOLORY** (`#sortGame`) — colour sorting. A solid-coloured ball appears; tap the basket of the
-  matching colour among **2 / 3 / 4** (`sk_sort`, colours from `SORT_COLORS`). Correct → celebrate
-  + speaks the colour name + advance; wrong shakes. Item is a solid colour with a small glossy
-  highlight so the colour reads clearly.
+- **KOLORY** (`#sortGame`) — colour sorting. A varied emoji **shape** in one colour appears
+  (heart/circle/square/object from `SORT_COLORS[i].ems`); tap the basket of the matching colour
+  among **2 / 3 / 4** (`sk_sort`). Correct → celebrate + speaks the colour name + advance; wrong
+  shakes. Emoji are picked to be strongly single-coloured so the colour reads clearly.
 - **LABIRYNT** (`#mazeGame`) — trace-to-goal. Drag a finger from 🐭 through a forgiving two-bar
   slalom corridor (drawn on `#mazeCanvas`) to 🧀; reaching the goal radius celebrates + new layout
   (gaps flip). Touching a wall softly resets the current stroke (buzz, no penalty). Canvas uses
@@ -192,18 +192,20 @@ After every edit:
   fits the backing store to the CSS box at `devicePixelRatio`, snapshotting + redrawing so a
   resize doesn't wipe the picture. 🌈 sets `paint.rainbow` (hue cycles per stroke segment); 🧽
   (`paintWipe()`) clears. Selected color index persists (`sk_paint`).
-- **Stukanka**: `whack` state; `buildWhack()` (once) makes 6 `.wmHole`s each with a `.wmMole`.
-  `whackTick()` self-schedules (`whack.spawnT`) to `whackPop()` a random free hole, and returns
-  when `current !== 'whack'`. Each pop hides itself after a random delay; `whackHit()` scores.
+- **Stukanka**: `whack` state; `buildWhack()` (once) makes 6 `.wmHole`s, each layered `.wmBack`
+  (hole opening) / `.wmMole` (rises from behind) / `.wmFront` (dirt lip) so the animal emerges and
+  pokes well above the rim. `whackTick()` self-schedules (`whack.spawnT`) to `whackPop()` a random
+  free hole, and returns when `current !== 'whack'`. Each pop hides after a random delay; `whackHit()` scores.
 - **Policz!**: `cnt` state; `newCount()` renders `cnt.n` emoji + digit buttons 1..`cnt.max`.
   `countTap()` compares the button's `data-d` to `cnt.n`; speaks `NUM_WORDS[cnt.n]`. Max persists
   (`sk_liczby`). One `#countArea` handler routes tap / advance-after-solve.
 - **Co nie pasuje?**: `odd` state; `newOdd()` fills the grid with `common.e` and one `oddP.e`
   (`data-odd="1"`); `oddLayout()` recomputes cell size on resize. Mirrors the single-handler
   solve/advance; says the odd word. Grid persists (`sk_odd`).
-- **Kolory**: `sort` state; `SORT_COLORS` palette. `newSort()` picks `sort.count` distinct colours,
-  renders the item (solid colour + glossy highlight) and baskets; `sortTap()` matches `data-ci` to
-  `sort.target`, speaks the colour name. Count persists (`sk_sort`).
+- **Kolory**: `sort` state; `SORT_COLORS` palette (each has `col` + `ems`, several strongly
+  single-coloured emoji). `newSort()` picks `sort.count` distinct colours, renders `#sortItem` as a
+  random emoji from the target colour's `ems` and the coloured baskets; `sortTap()` matches
+  `data-ci` to `sort.target`, speaks the colour name. Count persists (`sk_sort`).
 - **Labirynt**: `maze` state; `mazeSetup()` fits `#mazeCanvas` at `devicePixelRatio`, computes a
   two-bar slalom (`mazeGeometry()`, `maze.flip` chooses gap sides) and positions the DOM markers
   (`mazePlaceMarks()`). `pointermove` draws the trail, `mazeHitsWall()` soft-resets the stroke,
@@ -227,7 +229,15 @@ After every edit:
   `sk_puzzle` (puzzle grid size), `sk_memory` (memory grid size), `sk_listen` (choice count),
   `sk_shadow` (Cienie choice count), `sk_paint` (Malowanie brush color index),
   `sk_liczby` (POLICZ! max), `sk_odd` (CO NIE PASUJE? grid size), `sk_sort` (KOLORY basket count),
-  `sk_simon` (ŚWIATŁA best sequence length), `sk_tts` (`1`/`0` — whether speech synthesis works).
+  `sk_simon` (ŚWIATŁA best sequence length), `sk_layout` (hub `list`/`grid` view),
+  `sk_tts` (`1`/`0` — whether speech synthesis works).
+- **Hub layout**: a top-right toggle (`#layoutToggle`) switches `#cards` between the roomy list
+  and a compact 2-column `.grid` (`applyLayout()`); the choice persists (`sk_layout`).
+- **iOS audio unlock**: a fresh `AudioContext` starts muted until a buffer actually plays —
+  `acKick()` plays a 1-sample silent buffer whenever `ctx()` (re)creates the context (it's rebuilt
+  after every spoken word), fixing "first sounds silent until volume-up". `primeSpeech()` nudges
+  speech (`resume()` + a short `speakUnblocked('ok', 1200)`) on gestures, retried/throttled/capped
+  until `speechWorks===true`, so a flaky engine gets several chances without muting game sound.
 - Input model: taps count on `pointerdown` with **no cooldown** (a 3-year-old mashes); only
   post-win screens have a grace period (chest 800 ms; puzzle/scratch 600 ms) so mashing can't
   skip the reward, plus a 350 ms `transitioning` guard during chest theme swap. Don't
