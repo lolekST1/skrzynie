@@ -808,8 +808,7 @@
       // iOS unlocks the engine more reliably on a real (near-silent) word than
       // on an empty/space utterance, so speak a tiny word at very low volume.
       var u = new SpeechSynthesisUtterance('ok');
-      u.lang = 'pl-PL'; u.volume = 0.02; u.rate = 1.2;
-      if (plVoice) u.voice = plVoice;
+      u.lang = 'pl-PL'; u.volume = 0.02;
       speechSynthesis.speak(u);
       speechSynthesis.resume();
     } catch(e){}
@@ -817,16 +816,31 @@
   function say(word){
     try {
       if (!window.speechSynthesis) return;
-      if (!plVoice) loadVoices();
       // Only cancel a genuinely in-flight utterance — calling cancel() right
       // before speak() on iOS can swallow the new one.
       if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
       var u = new SpeechSynthesisUtterance(word);
-      u.lang = 'pl-PL'; u.rate = 0.8; u.pitch = 1.1;
-      if (plVoice) u.voice = plVoice;
+      u.lang = 'pl-PL'; u.rate = 0.9; u.pitch = 1.1;
+      // NOTE: we deliberately do NOT set u.voice — assigning an explicit voice
+      // object is a known iOS/Safari trigger for total silence. lang='pl-PL'
+      // already makes iOS pick the Polish voice (Zosia) when installed.
       speechSynthesis.speak(u);
       speechSynthesis.resume(); // iOS sometimes leaves the queue paused
     } catch(e){}
+  }
+  // speak with on-screen reporting of engine events (start/end/error) so a
+  // parent can tell "engine ran but muted" from "engine never started".
+  function testSpeak(statusEl){
+    if (!window.speechSynthesis){ statusEl.textContent = 'Ta przeglądarka nie ma czytania mowy'; return; }
+    try { speechSynthesis.cancel(); } catch(e){}
+    var u = new SpeechSynthesisUtterance('kotek');
+    u.lang = 'pl-PL'; u.rate = 0.9; u.pitch = 1.1;
+    var reacted = false;
+    u.onstart = function(){ reacted = true; statusEl.textContent = '▶ mowa RUSZYŁA — jeśli cisza, iPad wycisza mowę (przełącznik/Centrum sterowania, głośność)'; };
+    u.onend   = function(){ if (!reacted){ reacted = true; statusEl.textContent = '✓ mowa zakończona'; } };
+    u.onerror = function(ev){ reacted = true; statusEl.textContent = '✗ błąd mowy: ' + (ev && ev.error ? ev.error : '?'); };
+    try { speechSynthesis.speak(u); speechSynthesis.resume(); } catch(e){ statusEl.textContent = '✗ wyjątek: ' + e; }
+    setTimeout(function(){ if (!reacted) statusEl.textContent = '⚠ silnik mowy nie odpowiada (brak start/błędu) — odśwież stronę lub dograj głos'; }, 1600);
   }
   // human-readable state of speech synthesis, for the on-screen sound test
   function speechInfo(){
@@ -1734,21 +1748,23 @@
   document.addEventListener('pointerdown', function(){ ctx(); primeSpeech(); }, true);
 
   // ── sound self-test (hub footer) — lets a parent diagnose iPad silence ──
-  var tStat = document.getElementById('tStat');
+  var tStat = document.getElementById('tStat'), tStatLocked = false;
   document.getElementById('tSound').addEventListener('pointerdown', function(e){
     e.preventDefault(); e.stopPropagation(); ctx();
+    tStatLocked = true;
     tone(660, 0.22, 'triangle', 0.28); tone(990, 0.28, 'triangle', 0.22, 0.1); buzz(30);
     tStat.textContent = 'Słyszysz melodię? Jeśli nie — iPad jest wyciszony.';
   });
   document.getElementById('tWord').addEventListener('pointerdown', function(e){
     e.preventDefault(); e.stopPropagation(); ctx();
-    primeSpeech(); loadVoices(); say('kotek');
-    tStat.textContent = speechInfo();
+    tStatLocked = true;
+    primeSpeech(); loadVoices();
+    testSpeak(tStat); // speaks "kotek" and reports engine start/end/error on screen
   });
   if (window.speechSynthesis){
-    var _voicesChanged = function(){ loadVoices(); if (tStat && current === 'hub') tStat.textContent = speechInfo(); };
+    var _voicesChanged = function(){ loadVoices(); if (tStat && !tStatLocked && current === 'hub') tStat.textContent = speechInfo(); };
     try { speechSynthesis.addEventListener('voiceschanged', _voicesChanged); } catch(e){}
-    setTimeout(function(){ if (tStat) tStat.textContent = speechInfo(); }, 900);
+    setTimeout(function(){ if (tStat && !tStatLocked) tStat.textContent = speechInfo(); }, 900);
   }
 
   applyTheme(THEMES[0]);
