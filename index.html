@@ -576,12 +576,42 @@
 
   // simple, bold, easily recognizable pictures for puzzle + scratch
   var PICS = [
-    ['słońce','☀️'],['serce','❤️'],['gwiazdka','⭐'],['balon','🎈'],['kwiatek','🌸'],['jabłko','🍎'],
-    ['piłka','⚽'],['autko','🚗'],['rybka','🐟'],['kotek','🐱'],['piesek','🐶'],['motyl','🦋'],
-    ['tęcza','🌈'],['księżyc','🌙'],['choinka','🎄'],['truskawka','🍓'],['banan','🍌'],['arbuz','🍉'],
-    ['pączek','🍩'],['tort','🎂'],['rakieta','🚀'],['żaglówka','⛵'],['miś','🧸'],['pszczółka','🐝'],
-    ['biedronka','🐞'],['żabka','🐸'],['słonik','🐘'],['lew','🦁'],['jednorożec','🦄'],['pingwin','🐧'],
-    ['grzybek','🍄'],['parasol','☂️'],['prezent','🎁'],['dynia','🎃'],['ślimak','🐌'],['kaczka','🦆']
+    // zwierzątka
+    ['kotek','🐱'],['piesek','🐶'],['myszka','🐭'],['chomiczek','🐹'],['króliczek','🐰'],['lisek','🦊'],
+    ['niedźwiadek','🐻'],['panda','🐼'],['koala','🐨'],['tygrysek','🐯'],['lew','🦁'],['krówka','🐮'],
+    ['świnka','🐷'],['żabka','🐸'],['małpka','🐵'],['kurczaczek','🐤'],['kurka','🐔'],['pingwin','🐧'],
+    ['ptaszek','🐦'],['sówka','🦉'],['kaczuszka','🦆'],['łabędź','🦢'],['papużka','🦜'],['orzełek','🦅'],
+    ['pszczółka','🐝'],['biedronka','🐞'],['motylek','🦋'],['ślimak','🐌'],['gąsienica','🐛'],['mrówka','🐜'],
+    ['żółwik','🐢'],['wężyk','🐍'],['jaszczurka','🦎'],['rybka','🐟'],['rybka tropikalna','🐠'],['delfinek','🐬'],
+    ['wieloryb','🐳'],['rekin','🦈'],['ośmiornica','🐙'],['krab','🦀'],['muszelka','🐚'],['słonik','🐘'],
+    ['żyrafka','🦒'],['zebra','🦓'],['nosorożec','🦏'],['hipopotam','🦛'],['wielbłąd','🐫'],['lama','🦙'],
+    ['kangurek','🦘'],['jeżyk','🦔'],['dinozaur','🦕'],['smok','🐉'],['konik','🐴'],['owieczka','🐑'],
+    ['kózka','🐐'],['wilczek','🐺'],['szopek','🦝'],['foczka','🦭'],['indyk','🦃'],['jednorożec','🦄'],
+    // owoce i warzywa
+    ['jabłko','🍎'],['gruszka','🍐'],['pomarańcza','🍊'],['cytryna','🍋'],['banan','🍌'],['arbuz','🍉'],
+    ['winogrona','🍇'],['truskawka','🍓'],['wisienki','🍒'],['brzoskwinia','🍑'],['ananas','🍍'],['mango','🥭'],
+    ['kokos','🥥'],['kiwi','🥝'],['pomidorek','🍅'],['marchewka','🥕'],['kukurydza','🌽'],['ogórek','🥒'],
+    ['brokuł','🥦'],['ziemniak','🥔'],['cebulka','🧅'],['papryczka','🌶️'],['grzybek','🍄'],['kasztan','🌰'],
+    // jedzenie
+    ['chlebek','🍞'],['ser','🧀'],['jajko','🥚'],['naleśnik','🥞'],['hamburger','🍔'],['frytki','🍟'],
+    ['pizza','🍕'],['hot dog','🌭'],['kanapka','🥪'],['lody','🍦'],['lizak','🍭'],['cukierek','🍬'],
+    ['czekolada','🍫'],['ciastko','🍪'],['babeczka','🧁'],['pączek','🍩'],['tort','🎂'],['popcorn','🍿'],
+    // pojazdy
+    ['autko','🚗'],['autobus','🚌'],['taksówka','🚕'],['ciężarówka','🚚'],['traktorek','🚜'],['policja','🚓'],
+    ['karetka','🚑'],['straż','🚒'],['pociąg','🚂'],['helikopter','🚁'],['samolot','✈️'],['statek','🚢'],
+    ['żaglówka','⛵'],['rowerek','🚲'],['hulajnoga','🛴'],['rakieta','🚀'],['latawiec','🪁'],
+    // przyroda i niebo
+    ['słońce','☀️'],['księżyc','🌙'],['gwiazdka','⭐'],['tęcza','🌈'],['chmurka','☁️'],['śnieżynka','❄️'],
+    ['bałwanek','⛄'],['ognik','🔥'],['kropelka','💧'],['błyskawica','⚡'],['wulkan','🌋'],['drzewko','🌳'],
+    ['choinka','🎄'],['palma','🌴'],['kaktus','🌵'],['tulipan','🌷'],['różyczka','🌹'],['słonecznik','🌻'],
+    ['stokrotka','🌼'],['kwiatek','🌸'],['koniczynka','🍀'],['listek','🍁'],['planeta','🪐'],['ziemia','🌍'],
+    // zabawki i przedmioty
+    ['miś','🧸'],['prezent','🎁'],['balonik','🎈'],['piłka','⚽'],['koszykówka','🏀'],['tenis','🎾'],
+    ['puchar','🏆'],['medal','🏅'],['korona','👑'],['diamencik','💎'],['dzwoneczek','🔔'],['kluczyk','🔑'],
+    ['żaróweczka','💡'],['telefon','📱'],['aparat','📷'],['budzik','⏰'],['książka','📖'],['ołówek','✏️'],
+    ['kredka','🖍️'],['nożyczki','✂️'],['farbki','🎨'],['gitara','🎸'],['bębenek','🥁'],['trąbka','🎺'],
+    ['parasolka','☂️'],['okulary','👓'],['kapelusz','🎩'],['bucik','👟'],['czapeczka','🧢'],['plecaczek','🎒'],
+    ['walizka','🧳'],['wiaderko','🪣'],['latarka','🔦'],['serce','❤️'],['dynia','🎃']
   ];
 
   // ══════════════════════════════════════════════════════════════
