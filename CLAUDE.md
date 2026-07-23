@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project overview
 
 **Gierki** — a single-file HTML5 mini-game hub in Polish for a small child (~3 y.o.). The
-opening screen (`#hub`) is a menu of three cards leading to three mini-games; a 🏠 button in
+opening screen (`#hub`) is a menu of six cards leading to six mini-games; a 🏠 button in
 each game returns to the hub. All games share one juice toolkit (Web Audio sounds, canvas
 confetti/sparks, screen flash, `navigator.vibrate`, and `pl-PL` speech via the Web Speech API).
 
@@ -23,10 +23,21 @@ Mini-games:
 - **ZDRAPKA** (`#scratchGame`) — a scratch-off card. A silver canvas foil covers a big
   emoji+word; dragging erases it (`destination-out`). When ~50% is uncovered it auto-reveals,
   celebrates and speaks the word.
+- **PARY** (`#memoryGame`) — a memory / matching game. Cards flip on tap (CSS 3D `rotateY`);
+  find two identical emoji. Selectable board via chips **2×2 / 3×2 / 4×3** (`sk_memory`).
+  A matched pair locks face-up (sparks + speech); all pairs → celebrate. A brief `mem.lock`
+  holds input only during the mismatch flip-back (not a per-tap cooldown).
+- **CO SŁYSZYSZ?** (`#listenGame`) — listen-and-point. The phone speaks a word; the child taps
+  the matching emoji among **2 / 3 / 4** choices (`sk_listen`). A 🔊 button repeats the word;
+  wrong taps shake + gently re-speak with no penalty; correct → celebrate + advance.
+- **BĄBELKI** (`#bubbleGame`) — endless bubble-pop. Emoji bubbles rise (rAF loop, DOM nodes in
+  `#bubField`); tapping pops them (confetti + tone + counter). The loop self-stops when
+  `current !== 'bubble'`, so it pauses on 🏠 and restarts on re-entry.
 
-Both PUZZLE and ZDRAPKA draw pictures from the shared `PICS` array (simple, bold, recognizable
-emoji + Polish word). After a win, tapping the board/card advances to the next round (600 ms
-grace so mashing can't skip it).
+PUZZLE, ZDRAPKA, PARY, CO SŁYSZYSZ? and BĄBELKI draw pictures from the shared `PICS` array
+(~178 simple, bold, recognizable emoji + Polish word); `randomPics(n)` returns n distinct.
+After a win, tapping the board/card advances to the next round (600 ms grace so mashing can't
+skip it).
 
 The entire app lives in `index.html` — inline CSS + one inline `<script>`. No build system,
 no dependencies, no external requests (works offline once loaded). Screens are `.screen`
@@ -67,6 +78,12 @@ After every edit:
      `translate(...)` to recover the current order and solve blind.)
    - **Zdrapka**: heavily dragging `pointermove` across `#scCanvas` reveals the picture
      (`#scBravo` shown, canvas faded out).
+   - **Pary**: `.mzchip` gives 4 / 6 / 12 `.memCard`s; a test can read each `.memFace`'s emoji
+     to pair slots blind; matched pairs get `.matched`, all matched → `#memBravo`.
+   - **Co słyszysz?**: `.lzchip` gives 2 / 3 / 4 `.lisTile`s; the correct tile carries the same
+     `data-w` the game will speak; wrong tile gets `.wrong` (no solve), correct → `#lisBravo`.
+   - **Bąbelki**: after ~1.5 s `#bubField .bubble` nodes exist; a `pointerdown` on one pops it
+     and bumps `#bubCount`; leaving via 🏠 stops the rAF loop (node count stays constant).
 
 ## Architecture notes (all inside index.html)
 
@@ -76,8 +93,9 @@ After every edit:
 - `wordPos(word,key)` classifies the first phoneme occurrence as `start`/`middle`/`end`;
   `buildBag()` filters the bank by selected phonemes+positions (falls back to all positions if
   the combo has no words) and shuffles; prizes draw from the bag without repeats.
-- `PICS` — shared picture bank (`[word, emoji]`) for PUZZLE and ZDRAPKA; keep emoji simple and
-  bold so a sliced/half-scratched version stays recognizable.
+- `PICS` — shared picture bank (`[word, emoji]`, ~178 entries) for PUZZLE, ZDRAPKA, PARY,
+  CO SŁYSZYSZ? and BĄBELKI; keep emoji simple and bold so a sliced/half-scratched/bubbled
+  version stays recognizable. `randomPics(n)` returns n distinct `{w,e}`.
 - **Puzzle**: state in `pz` (`cols,rows,pic,order,cell,sel,solved`); `order[slot]=correctIdx`.
   `pzLayout()` (re)computes cell size + emoji font on resize; `pzPaint()` sets each cell's
   `translate` to reveal its slice; `pzTapSlot()` swaps; solved = `order[i]===i` for all. Chosen
@@ -85,8 +103,22 @@ After every edit:
 - **Scratch**: `sc` state; `scDrawCover()` paints the foil, `scErase()` uses
   `globalCompositeOperation='destination-out'`, `scFraction()` samples pixels (throttled) and
   reveals past ~0.5. Canvas uses `devicePixelRatio` scaling and `touch-action:none`.
+- **Pary**: `mem` state; `deck[slot]={id,p}`, two of each `id`. `mem.lock` guards only the
+  compare window; matched slots get `.matched`, solved when all pairs matched. `memLayout()`
+  recomputes on resize. Grid size persists (`sk_memory` = `{c,r}`).
+- **Co słyszysz?**: `lis` state; `newListen()` renders `lis.count` tiles, one is `lis.target`.
+  One `#lisArea` handler routes 🔊-repeat / advance-after-solve / tile-tap. Count persists
+  (`sk_listen`).
+- **Bąbelki**: `bubbles[]` of DOM nodes moved by a single `bubStep` rAF loop that returns
+  (stops) when `current !== 'bubble'`; `openBubbleGame()` clears + restarts it. No win state.
+- **Speech on iOS/iPad**: iOS ignores `speechSynthesis.speak()` unless first primed *inside* a
+  user gesture — every prize speaks from a timer, so a document-level `pointerdown` capture
+  listener calls `primeSpeech()` (a 0-volume utterance) once. `loadVoices()`/`onvoiceschanged`
+  pick a `pl-*` voice when present. (If iPad is still silent: the side/Control-Center **mute**
+  switch also silences Web Speech + Web Audio in Safari; the Polish "Zosia" voice may need
+  downloading in iOS Settings.)
 - Selections persist in `localStorage`: `sk_gloski` (phonemes), `sk_pozycje` (positions),
-  `sk_puzzle` (puzzle grid size).
+  `sk_puzzle` (puzzle grid size), `sk_memory` (memory grid size), `sk_listen` (choice count).
 - Input model: taps count on `pointerdown` with **no cooldown** (a 3-year-old mashes); only
   post-win screens have a grace period (chest 800 ms; puzzle/scratch 600 ms) so mashing can't
   skip the reward, plus a 350 ms `transitioning` guard during chest theme swap. Don't
