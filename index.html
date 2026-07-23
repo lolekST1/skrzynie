@@ -809,87 +809,53 @@
   var _utters = [];
   function retain(u){ _utters.push(u); if (_utters.length > 12) _utters.shift(); }
 
-  // Different iOS/Safari builds disagree on what makes speech actually start:
-  // some need an explicit voice, some need a cancel() kick first. We probe these
-  // on the device (test button) and remember the winner in localStorage.
-  var SPEAK = [
-    { voice:false, kick:false },
-    { voice:true,  kick:false },
-    { voice:false, kick:true  },
-    { voice:true,  kick:true  }
-  ];
-  var speakStrategy = 0;
-  try { var _ss = parseInt(localStorage.getItem('sk_speak'), 10); if (_ss >= 0 && _ss < SPEAK.length) speakStrategy = _ss; } catch(e){}
   // true while a word is being spoken — game sounds step aside so they don't
   // steal the audio route back from speech (see speakUnblocked / ctx / tone).
   var ttsActive = false;
 
-  function makeUtter(word, strat){
+  function makeUtter(word){
     var u = new SpeechSynthesisUtterance(word);
-    u.lang = 'pl-PL'; u.rate = 0.9; u.pitch = 1.1;
-    if (strat.voice && plVoice) u.voice = plVoice;
+    // DEFAULT rate/pitch/volume and NO explicit voice: custom values and voice
+    // assignment are both known iOS/Safari triggers for total silence. lang
+    // alone makes iOS pick the Polish voice (Zosia) when installed.
+    u.lang = 'pl-PL';
     retain(u);
     return u;
   }
-  // Speak while freeing the WebAudio route: on iOS a *running* AudioContext
-  // steals the audio session from speech synthesis, so the utterance never even
-  // starts (no onstart / no onerror — exactly the iPad symptom). We suspend our
-  // sound engine for the duration of the word and resume it on end/error.
+  // Speak while fully releasing the WebAudio route: on iOS an AudioContext that
+  // has grabbed the audio session keeps speech synthesis silent (it never even
+  // starts — no onstart/onerror). Suspending isn't always enough, so we CLOSE
+  // the context for the duration of the word; ctx() lazily recreates it after.
   function speakUnblocked(u){
     var restored = false;
-    function restore(){
-      if (restored) return; restored = true; ttsActive = false;
-      try { if (AC && AC.state === 'suspended' && AC.resume) AC.resume(); } catch(e){}
-    }
+    function restore(){ if (restored) return; restored = true; ttsActive = false; }
     var origEnd = u.onend, origErr = u.onerror;
     u.onend = function(ev){ restore(); if (origEnd) origEnd.call(u, ev); };
     u.onerror = function(ev){ restore(); if (origErr) origErr.call(u, ev); };
     ttsActive = true;
-    try { if (AC && AC.state === 'running' && AC.suspend) AC.suspend(); } catch(e){}
+    try { if (AC && AC.close){ AC.close(); AC = null; } } catch(e){ AC = null; }
+    try { speechSynthesis.cancel(); } catch(e){}
     try { speechSynthesis.speak(u); speechSynthesis.resume(); } catch(e){}
-    setTimeout(function(){ try { speechSynthesis.resume(); } catch(e){} }, 80);
+    setTimeout(function(){ try { speechSynthesis.resume(); } catch(e){} }, 90);
     setTimeout(restore, 6000); // safety: never leave game sound muted
   }
   function primeSpeech(){
     if (speechPrimed || !window.speechSynthesis) return;
     speechPrimed = true;
-    try {
-      loadVoices();
-      var u = makeUtter('ok', SPEAK[speakStrategy]); u.volume = 0.02;
-      speakUnblocked(u);
-    } catch(e){}
+    try { loadVoices(); speakUnblocked(makeUtter('ok')); } catch(e){}
   }
   function say(word){
-    try {
-      if (!window.speechSynthesis) return;
-      var strat = SPEAK[speakStrategy] || SPEAK[0];
-      if (strat.kick){ try { speechSynthesis.cancel(); } catch(e){} }
-      else if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
-      speakUnblocked(makeUtter(word, strat));
-    } catch(e){}
+    try { if (window.speechSynthesis) speakUnblocked(makeUtter(word)); } catch(e){}
   }
-  // Probe each strategy in turn; lock onto the first that actually fires onstart.
+  // Single robust in-gesture attempt that reports exactly what the engine does.
   function probeSpeech(statusEl){
-    if (!window.speechSynthesis){ statusEl.textContent = 'Ta przeglądarka nie ma czytania mowy'; return; }
-    var i = 0, done = false;
-    var NAMES = ['A (głos auto)','B (głos Zosia)','C (kopnięcie + auto)','D (kopnięcie + Zosia)'];
-    function tryNext(){
-      if (done) return;
-      if (i >= SPEAK.length){ statusEl.textContent = '⚠ żadna metoda nie ruszyła mowy — napisz mi to, dołożę kolejny wariant.'; return; }
-      var idx = i++, strat = SPEAK[idx];
-      statusEl.textContent = 'próbuję metody ' + NAMES[idx] + '…';
-      if (strat.kick){ try { speechSynthesis.cancel(); } catch(e){} }
-      var u = makeUtter('kotek', strat);
-      u.onstart = function(){
-        done = true; speakStrategy = idx;
-        try { localStorage.setItem('sk_speak', String(idx)); } catch(e){}
-        statusEl.textContent = '✅ Działa! Metoda ' + NAMES[idx] + ' — zapisana, gra będzie jej używać.';
-      };
-      u.onerror = function(){ if (!done) setTimeout(tryNext, 60); };
-      speakUnblocked(u);
-      setTimeout(function(){ if (!done && i === idx + 1) tryNext(); }, 1200);
-    }
-    tryNext();
+    if (!window.speechSynthesis){ statusEl.textContent = 'Ta przeglądarka w ogóle nie ma czytania mowy'; return; }
+    var u = makeUtter('kotek'); var reacted = false;
+    u.onstart = function(){ reacted = true; statusEl.textContent = '▶ mowa RUSZYŁA! Słyszysz „kotek"? (jeśli tak — gra będzie czytać słówka)'; };
+    u.onend   = function(){ if (!reacted){ reacted = true; statusEl.textContent = '✓ mowa zakończona'; } };
+    u.onerror = function(ev){ reacted = true; statusEl.textContent = '✗ błąd mowy: ' + (ev && ev.error ? ev.error : '?') + ' — napisz mi to'; };
+    speakUnblocked(u);
+    setTimeout(function(){ if (!reacted) statusEl.textContent = '⚠ mowa nie startuje mimo obecnej Zosi — to ograniczenie Safari na tym iPadzie. Napisz mi, przełączę grę na duży napis zamiast czytania.'; }, 1900);
   }
   // human-readable state of speech synthesis, for the on-screen sound test
   function speechInfo(){
