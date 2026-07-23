@@ -21,7 +21,7 @@ Mini-games:
   shows the goal. Pieces are rendered by clipping an oversized emoji (`.pzInner` translated
   inside an `overflow:hidden` `.pzCell`).
 - **ZDRAPKA** (`#scratchGame`) — a scratch-off card. A silver canvas foil covers a big
-  emoji+word; dragging erases it (`destination-out`). When ~50% is uncovered it auto-reveals,
+  emoji+word; dragging erases it (`destination-out`). When ~70% is uncovered it auto-reveals,
   celebrates and speaks the word.
 - **PARY** (`#memoryGame`) — a memory / matching game. Cards flip on tap (CSS 3D `rotateY`);
   find two identical emoji. Selectable board via chips **2×2 / 3×2 / 4×3** (`sk_memory`).
@@ -124,7 +124,7 @@ After every edit:
   size persists in `localStorage` (`sk_puzzle` = `{c,r}`).
 - **Scratch**: `sc` state; `scDrawCover()` paints the foil, `scErase()` uses
   `globalCompositeOperation='destination-out'`, `scFraction()` samples pixels (throttled) and
-  reveals past ~0.5. Canvas uses `devicePixelRatio` scaling and `touch-action:none`.
+  reveals past ~0.7 (~0.66 on pointer-up). Canvas uses `devicePixelRatio` scaling and `touch-action:none`.
 - **Pary**: `mem` state; `deck[slot]={id,p}`, two of each `id`. `mem.lock` guards only the
   compare window; matched slots get `.matched`, solved when all pairs matched. `memLayout()`
   recomputes on resize. Grid size persists (`sk_memory` = `{c,r}`).

@@ -1609,7 +1609,7 @@
     if (now - sc.lastSample > 220){
       sc.lastSample = now;
       sndScratch();
-      if (scFraction() > 0.5) scRevealDone();
+      if (scFraction() > 0.7) scRevealDone();
     }
   }
   scCanvas.addEventListener('pointerdown', function(e){
@@ -1622,7 +1622,7 @@
   });
   scCanvas.addEventListener('pointermove', function(e){ e.preventDefault(); scMove(e.clientX, e.clientY); });
   function scEnd(){
-    if (sc.scratching && !sc.done && scFraction() > 0.45) scRevealDone();
+    if (sc.scratching && !sc.done && scFraction() > 0.66) scRevealDone();
     sc.scratching = false;
   }
   scCanvas.addEventListener('pointerup', function(e){ e.preventDefault(); scEnd(); });
