@@ -333,19 +333,6 @@
   #cardListen { background: linear-gradient(135deg,#29b6f6,#43a047); }
   #cardBubble { background: linear-gradient(135deg,#26c6da,#5c6bc0); }
 
-  /* discreet sound self-test for the parent (hub footer) */
-  #sndTest {
-    display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:center;
-    width:min(90vw,440px); margin:16px 0 6px; padding-bottom:4vh;
-  }
-  .tbtn {
-    border:none; border-radius:999px; padding:8px 15px;
-    background:rgba(255,255,255,0.2); color:#fff; font-family:inherit;
-    font-weight:800; font-size:15px; cursor:pointer;
-    box-shadow: inset 0 -3px 0 rgba(0,0,0,0.12);
-  }
-  .tbtn:active { transform: translateY(2px); }
-  #tStat { color:rgba(255,255,255,0.9); font-size:13px; font-weight:700; text-align:center; flex-basis:100%; }
 
   /* ══════════════ PARY (memory) ══════════════ */
   #memArea { flex:1; display:flex; align-items:center; justify-content:center; width:100%; }
@@ -458,11 +445,6 @@
         <span class="ic">🫧</span>
         <span class="txt"><span class="lab">BĄBELKI</span><span class="desc">Łap i przebijaj bąbelki</span></span>
       </button>
-    </div>
-    <div id="sndTest">
-      <button id="tSound" class="tbtn">🔔 dźwięk</button>
-      <button id="tWord" class="tbtn">🗣️ słowo</button>
-      <span id="tStat">test dźwięku dla rodzica</span>
     </div>
   </div>
 
@@ -865,26 +847,8 @@
   function say(word){
     try { if (window.speechSynthesis) speakUnblocked(makeUtter(word)); } catch(e){}
   }
-  // Single robust in-gesture attempt that reports exactly what the engine does.
-  function probeSpeech(statusEl){
-    if (!window.speechSynthesis){ statusEl.textContent = 'Ta przeglądarka w ogóle nie ma czytania mowy'; return; }
-    var u = makeUtter('kotek'); var reacted = false;
-    u.onstart = function(){ reacted = true; setSpeechWorks(true); statusEl.textContent = '▶ mowa RUSZYŁA! Słyszysz „kotek"? (jeśli tak — gra będzie czytać słówka)'; };
-    u.onend   = function(){ if (!reacted){ reacted = true; statusEl.textContent = '✓ mowa zakończona'; } };
-    u.onerror = function(ev){ reacted = true; setSpeechWorks(false); statusEl.textContent = '✗ mowa nie działa (' + (ev && ev.error ? ev.error : '?') + ') — włączam napisy w grze „Co słyszysz?".'; };
-    speakUnblocked(u);
-    setTimeout(function(){ if (!reacted){ setSpeechWorks(false); statusEl.textContent = '⚠ mowa nie startuje na tym iPadzie — nic nie szkodzi: w „Co słyszysz?" pojawi się napis do przeczytania, reszta gier i tak pokazuje słowa.'; } }, 1900);
-  }
-  // human-readable state of speech synthesis, for the on-screen sound test
-  function speechInfo(){
-    if (!window.speechSynthesis) return 'iPad nie ma czytania mowy w tej przeglądarce';
-    var vs = [];
-    try { vs = speechSynthesis.getVoices(); } catch(e){}
-    var pl = null;
-    for (var i = 0; i < vs.length; i++){ if (/^pl(\b|[-_])/i.test(vs[i].lang)){ pl = vs[i]; break; } }
-    if (!vs.length) return 'głosy jeszcze się wczytują… stuknij ponownie';
-    return 'głosy: ' + vs.length + ' · polski: ' + (pl ? ('TAK — ' + pl.name) : 'BRAK (dograj w Ustawieniach)');
-  }
+  // Detect whether TTS works: called on entering CO SŁYSZYSZ?. If nothing
+  // starts, newListen()'s timer flips speechWorks=false and shows the word.
 
   // sounds (Web Audio, no files)
   var AC = null;
@@ -1801,26 +1765,6 @@
 
   // unlock audio + speech on the very first user gesture (needed on iOS/iPad)
   document.addEventListener('pointerdown', function(){ ctx(); primeSpeech(); }, true);
-
-  // ── sound self-test (hub footer) — lets a parent diagnose iPad silence ──
-  var tStat = document.getElementById('tStat'), tStatLocked = false;
-  document.getElementById('tSound').addEventListener('pointerdown', function(e){
-    e.preventDefault(); e.stopPropagation(); ctx();
-    tStatLocked = true;
-    tone(660, 0.22, 'triangle', 0.28); tone(990, 0.28, 'triangle', 0.22, 0.1); buzz(30);
-    tStat.textContent = 'Słyszysz melodię? Jeśli nie — iPad jest wyciszony.';
-  });
-  document.getElementById('tWord').addEventListener('pointerdown', function(e){
-    e.preventDefault(); e.stopPropagation(); ctx();
-    tStatLocked = true;
-    primeSpeech(); loadVoices();
-    probeSpeech(tStat); // tries speech strategies, locks onto the one that works
-  });
-  if (window.speechSynthesis){
-    var _voicesChanged = function(){ loadVoices(); if (tStat && !tStatLocked && current === 'hub') tStat.textContent = speechInfo(); };
-    try { speechSynthesis.addEventListener('voiceschanged', _voicesChanged); } catch(e){}
-    setTimeout(function(){ if (tStat && !tStatLocked) tStat.textContent = speechInfo(); }, 900);
-  }
 
   applyTheme(THEMES[0]);
   markSizeChips();
