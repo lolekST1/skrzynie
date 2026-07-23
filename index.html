@@ -820,6 +820,9 @@
   ];
   var speakStrategy = 0;
   try { var _ss = parseInt(localStorage.getItem('sk_speak'), 10); if (_ss >= 0 && _ss < SPEAK.length) speakStrategy = _ss; } catch(e){}
+  // true while a word is being spoken — game sounds step aside so they don't
+  // steal the audio route back from speech (see speakUnblocked / ctx / tone).
+  var ttsActive = false;
 
   function makeUtter(word, strat){
     var u = new SpeechSynthesisUtterance(word);
@@ -828,14 +831,32 @@
     retain(u);
     return u;
   }
+  // Speak while freeing the WebAudio route: on iOS a *running* AudioContext
+  // steals the audio session from speech synthesis, so the utterance never even
+  // starts (no onstart / no onerror — exactly the iPad symptom). We suspend our
+  // sound engine for the duration of the word and resume it on end/error.
+  function speakUnblocked(u){
+    var restored = false;
+    function restore(){
+      if (restored) return; restored = true; ttsActive = false;
+      try { if (AC && AC.state === 'suspended' && AC.resume) AC.resume(); } catch(e){}
+    }
+    var origEnd = u.onend, origErr = u.onerror;
+    u.onend = function(ev){ restore(); if (origEnd) origEnd.call(u, ev); };
+    u.onerror = function(ev){ restore(); if (origErr) origErr.call(u, ev); };
+    ttsActive = true;
+    try { if (AC && AC.state === 'running' && AC.suspend) AC.suspend(); } catch(e){}
+    try { speechSynthesis.speak(u); speechSynthesis.resume(); } catch(e){}
+    setTimeout(function(){ try { speechSynthesis.resume(); } catch(e){} }, 80);
+    setTimeout(restore, 6000); // safety: never leave game sound muted
+  }
   function primeSpeech(){
     if (speechPrimed || !window.speechSynthesis) return;
     speechPrimed = true;
     try {
       loadVoices();
       var u = makeUtter('ok', SPEAK[speakStrategy]); u.volume = 0.02;
-      speechSynthesis.speak(u);
-      speechSynthesis.resume();
+      speakUnblocked(u);
     } catch(e){}
   }
   function say(word){
@@ -844,11 +865,7 @@
       var strat = SPEAK[speakStrategy] || SPEAK[0];
       if (strat.kick){ try { speechSynthesis.cancel(); } catch(e){} }
       else if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
-      var u = makeUtter(word, strat);
-      speechSynthesis.speak(u);
-      speechSynthesis.resume(); // iOS sometimes leaves the queue paused
-      // second resume kick shortly after — iOS occasionally needs it
-      setTimeout(function(){ try { speechSynthesis.resume(); } catch(e){} }, 80);
+      speakUnblocked(makeUtter(word, strat));
     } catch(e){}
   }
   // Probe each strategy in turn; lock onto the first that actually fires onstart.
@@ -858,7 +875,7 @@
     var NAMES = ['A (głos auto)','B (głos Zosia)','C (kopnięcie + auto)','D (kopnięcie + Zosia)'];
     function tryNext(){
       if (done) return;
-      if (i >= SPEAK.length){ statusEl.textContent = '⚠ żadna metoda nie ruszyła mowy — to wyciszenie/audio iPada, nie kod. Sprawdź tryb cichy i głośność.'; return; }
+      if (i >= SPEAK.length){ statusEl.textContent = '⚠ żadna metoda nie ruszyła mowy — napisz mi to, dołożę kolejny wariant.'; return; }
       var idx = i++, strat = SPEAK[idx];
       statusEl.textContent = 'próbuję metody ' + NAMES[idx] + '…';
       if (strat.kick){ try { speechSynthesis.cancel(); } catch(e){} }
@@ -869,8 +886,8 @@
         statusEl.textContent = '✅ Działa! Metoda ' + NAMES[idx] + ' — zapisana, gra będzie jej używać.';
       };
       u.onerror = function(){ if (!done) setTimeout(tryNext, 60); };
-      try { speechSynthesis.speak(u); speechSynthesis.resume(); } catch(e){}
-      setTimeout(function(){ if (!done && i === idx + 1) tryNext(); }, 1100);
+      speakUnblocked(u);
+      setTimeout(function(){ if (!done && i === idx + 1) tryNext(); }, 1200);
     }
     tryNext();
   }
@@ -888,11 +905,13 @@
   // sounds (Web Audio, no files)
   var AC = null;
   function ctx(){
-    if (!AC) { var C = window.AudioContext || window.webkitAudioContext; if (C) AC = new C(); }
-    if (AC && AC.state === 'suspended') AC.resume();
+    if (!AC || AC.state === 'closed') { var C = window.AudioContext || window.webkitAudioContext; if (C) AC = new C(); }
+    // don't grab the audio route back while a word is being spoken (iOS)
+    if (AC && AC.state === 'suspended' && !ttsActive) AC.resume();
     return AC;
   }
   function tone(freq, dur, type, vol, when, slide){
+    if (ttsActive) return; // stay silent while speech owns the audio route
     var ac = ctx(); if (!ac) return;
     var t = ac.currentTime + (when || 0);
     var o = ac.createOscillator(), g = ac.createGain();
