@@ -56,6 +56,13 @@ The entire app lives in `index.html` — inline CSS + one inline `<script>`. No 
 no dependencies, no external requests (works offline once loaded). Screens are `.screen`
 elements toggled by a `.on` class via `show(name)`; `goHome()` cancels speech + timers.
 
+## Workflow — commit straight to `main`
+
+Per the maintainer's standing instruction, land finished changes **directly on `main`** (no
+feature-branch/PR gate) so the Vercel production deploy updates immediately and can be checked
+live. Always **syntax-check + Playwright smoke-test before pushing** (see below); push only when
+green. Branch/PR only when the maintainer explicitly asks for one.
+
 ## Deployment (Vercel)
 
 - **Live URL: https://skrzynie.vercel.app**
