@@ -266,7 +266,10 @@
   @keyframes scpop { 0% { transform: scale(0.4); } 60% { transform: scale(1.18); } 100% { transform: scale(1); } }
 
   /* ── shared fx ── */
-  #fx { position:fixed; inset:0; pointer-events:none; z-index:10; }
+  /* explicit width/height: <canvas> is a replaced element, so inset:0 alone
+     leaves it at its intrinsic (backing-store) size — on devicePixelRatio>1
+     that scaled every particle by dpr (shifted down/right). Lock display to viewport. */
+  #fx { position:fixed; inset:0; width:100vw; height:100vh; pointer-events:none; z-index:10; }
   #flash { position:fixed; inset:0; background:#fff; opacity:0; pointer-events:none; z-index:9; }
   #flash.go { animation: flashout 0.5s ease-out; }
   @keyframes flashout { 0% { opacity:0.9; } 100% { opacity:0; } }
