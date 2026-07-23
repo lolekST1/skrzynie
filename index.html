@@ -422,34 +422,36 @@
   #cardPaint  { background: linear-gradient(135deg,#26a69a,#ffa726); }
 
   /* ══════════════ CIENIE (shadows) ══════════════ */
-  #shArea { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3vh; width:100%; padding:0 12px; }
+  #shadowGame .gtitle { margin-top: max(6vh, env(safe-area-inset-top, 0px) + 48px); }
+  #shArea { flex:1; min-height:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap: clamp(10px, 2vh, 20px); width:100%; padding:0 12px; }
   #shTargetWrap {
-    background:rgba(255,255,255,0.92); border-radius:30px; padding: clamp(10px,3vw,22px);
+    background:rgba(255,255,255,0.92); border-radius:26px; padding: clamp(6px,2vw,14px);
     box-shadow: 0 10px 26px rgba(0,0,0,0.22);
     display:flex; align-items:center; justify-content:center;
   }
   #shTarget {
-    line-height:1; font-size: clamp(90px, 30vw, 190px);
+    line-height:1; font-size: clamp(64px, 19vw, 132px);
     filter: brightness(0) opacity(0.82);
     animation: shin 0.4s cubic-bezier(.2,1.7,.35,1);
   }
   @keyframes shin { 0% { transform: scale(0.5); opacity:0; } 100% { transform: scale(1); opacity:1; } }
   #shChoices {
-    display:flex; flex-wrap:wrap; gap:16px; justify-content:center; align-items:center;
-    width:min(94vw, 540px);
+    display:flex; flex-wrap:wrap; gap: clamp(8px, 2.4vw, 14px); justify-content:center; align-items:center;
+    width:min(94vw, 520px);
   }
   .shTile {
-    width: clamp(104px, 36vw, 190px); height: clamp(104px, 36vw, 190px);
-    border-radius:26px; background:rgba(255,255,255,0.92);
+    width: clamp(82px, 26vw, 148px); height: clamp(82px, 26vw, 148px);
+    border-radius:22px; background:rgba(255,255,255,0.92);
     display:flex; align-items:center; justify-content:center; line-height:1;
-    font-size: clamp(58px, 21vw, 116px); cursor:pointer;
+    font-size: clamp(46px, 16vw, 92px); cursor:pointer;
     box-shadow: 0 8px 0 rgba(0,0,0,0.16); transition: transform 0.12s;
   }
   .shTile:active { transform: translateY(4px); }
   .shTile.wrong { animation: wrongshake 0.4s; }
   .shTile.right { animation: rightpop 0.55s cubic-bezier(.2,1.8,.4,1); }
   .shTile.dim { opacity:0.35; }
-  #shSizes { display:flex; gap:12px; margin-bottom: max(3.5vh, env(safe-area-inset-bottom, 0px) + 2vh); }
+  #shadowGame .hint { margin-bottom: 1.5vh; }
+  #shSizes { display:flex; gap:12px; margin-bottom: max(2vh, env(safe-area-inset-bottom, 0px) + 1vh); }
 
   /* ══════════════ PIANINO (piano) ══════════════ */
   #pianoArea { flex:1; display:flex; align-items:stretch; justify-content:center; width:100%; padding: 2vh 10px; }
@@ -1918,6 +1920,8 @@
     shBravo.classList.remove('show');
     shHint.textContent = 'Który obrazek pasuje do cienia?';
     shTarget.textContent = sh.target.e;
+    // back to a black silhouette (a solved round cleared the inline filter)
+    shTarget.style.filter = '';
     // replay the silhouette pop-in
     shTarget.style.animation = 'none'; void shTarget.offsetWidth; shTarget.style.animation = '';
     shChoices.innerHTML = '';
