@@ -580,6 +580,7 @@
 
   <!-- ══════════════ PHONEME PICKER (chest) ══════════════ -->
   <div id="picker">
+    <button class="topbtn left homeBtn" aria-label="Menu">🏠</button>
     <h1>🔤 Jaką głoskę ćwiczymy?</h1>
     <p>Wybierz jedną lub kilka głosek — nagrody będą je ćwiczyć</p>
     <div id="chips"></div>
@@ -962,6 +963,10 @@
   function goHome(){
     try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch(e){}
     clearTimeout(openChest._t);
+    // close the phoneme picker overlay too, else it stays over the hub
+    var pk = document.getElementById('picker');
+    if (pk) pk.classList.remove('on');
+    pickerOpen = false;
     show('hub');
   }
   var homeBtns = document.querySelectorAll('.homeBtn');
