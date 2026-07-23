@@ -799,16 +799,41 @@
   if (window.speechSynthesis){
     loadVoices();
     try { speechSynthesis.onvoiceschanged = loadVoices; } catch(e){}
+    // clear any stuck queue left over from a previous page/session (iOS)
+    try { speechSynthesis.cancel(); } catch(e){}
+  }
+
+  // Retain utterances: some engines garbage-collect the utterance before it
+  // speaks, so it never starts and never fires events — exactly the "silnik nie
+  // odpowiada" symptom on iPad. Keeping references alive prevents that.
+  var _utters = [];
+  function retain(u){ _utters.push(u); if (_utters.length > 12) _utters.shift(); }
+
+  // Different iOS/Safari builds disagree on what makes speech actually start:
+  // some need an explicit voice, some need a cancel() kick first. We probe these
+  // on the device (test button) and remember the winner in localStorage.
+  var SPEAK = [
+    { voice:false, kick:false },
+    { voice:true,  kick:false },
+    { voice:false, kick:true  },
+    { voice:true,  kick:true  }
+  ];
+  var speakStrategy = 0;
+  try { var _ss = parseInt(localStorage.getItem('sk_speak'), 10); if (_ss >= 0 && _ss < SPEAK.length) speakStrategy = _ss; } catch(e){}
+
+  function makeUtter(word, strat){
+    var u = new SpeechSynthesisUtterance(word);
+    u.lang = 'pl-PL'; u.rate = 0.9; u.pitch = 1.1;
+    if (strat.voice && plVoice) u.voice = plVoice;
+    retain(u);
+    return u;
   }
   function primeSpeech(){
     if (speechPrimed || !window.speechSynthesis) return;
     speechPrimed = true;
     try {
       loadVoices();
-      // iOS unlocks the engine more reliably on a real (near-silent) word than
-      // on an empty/space utterance, so speak a tiny word at very low volume.
-      var u = new SpeechSynthesisUtterance('ok');
-      u.lang = 'pl-PL'; u.volume = 0.02;
+      var u = makeUtter('ok', SPEAK[speakStrategy]); u.volume = 0.02;
       speechSynthesis.speak(u);
       speechSynthesis.resume();
     } catch(e){}
@@ -816,31 +841,38 @@
   function say(word){
     try {
       if (!window.speechSynthesis) return;
-      // Only cancel a genuinely in-flight utterance — calling cancel() right
-      // before speak() on iOS can swallow the new one.
-      if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
-      var u = new SpeechSynthesisUtterance(word);
-      u.lang = 'pl-PL'; u.rate = 0.9; u.pitch = 1.1;
-      // NOTE: we deliberately do NOT set u.voice — assigning an explicit voice
-      // object is a known iOS/Safari trigger for total silence. lang='pl-PL'
-      // already makes iOS pick the Polish voice (Zosia) when installed.
+      var strat = SPEAK[speakStrategy] || SPEAK[0];
+      if (strat.kick){ try { speechSynthesis.cancel(); } catch(e){} }
+      else if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
+      var u = makeUtter(word, strat);
       speechSynthesis.speak(u);
       speechSynthesis.resume(); // iOS sometimes leaves the queue paused
+      // second resume kick shortly after — iOS occasionally needs it
+      setTimeout(function(){ try { speechSynthesis.resume(); } catch(e){} }, 80);
     } catch(e){}
   }
-  // speak with on-screen reporting of engine events (start/end/error) so a
-  // parent can tell "engine ran but muted" from "engine never started".
-  function testSpeak(statusEl){
+  // Probe each strategy in turn; lock onto the first that actually fires onstart.
+  function probeSpeech(statusEl){
     if (!window.speechSynthesis){ statusEl.textContent = 'Ta przeglądarka nie ma czytania mowy'; return; }
-    try { speechSynthesis.cancel(); } catch(e){}
-    var u = new SpeechSynthesisUtterance('kotek');
-    u.lang = 'pl-PL'; u.rate = 0.9; u.pitch = 1.1;
-    var reacted = false;
-    u.onstart = function(){ reacted = true; statusEl.textContent = '▶ mowa RUSZYŁA — jeśli cisza, iPad wycisza mowę (przełącznik/Centrum sterowania, głośność)'; };
-    u.onend   = function(){ if (!reacted){ reacted = true; statusEl.textContent = '✓ mowa zakończona'; } };
-    u.onerror = function(ev){ reacted = true; statusEl.textContent = '✗ błąd mowy: ' + (ev && ev.error ? ev.error : '?'); };
-    try { speechSynthesis.speak(u); speechSynthesis.resume(); } catch(e){ statusEl.textContent = '✗ wyjątek: ' + e; }
-    setTimeout(function(){ if (!reacted) statusEl.textContent = '⚠ silnik mowy nie odpowiada (brak start/błędu) — odśwież stronę lub dograj głos'; }, 1600);
+    var i = 0, done = false;
+    var NAMES = ['A (głos auto)','B (głos Zosia)','C (kopnięcie + auto)','D (kopnięcie + Zosia)'];
+    function tryNext(){
+      if (done) return;
+      if (i >= SPEAK.length){ statusEl.textContent = '⚠ żadna metoda nie ruszyła mowy — to wyciszenie/audio iPada, nie kod. Sprawdź tryb cichy i głośność.'; return; }
+      var idx = i++, strat = SPEAK[idx];
+      statusEl.textContent = 'próbuję metody ' + NAMES[idx] + '…';
+      if (strat.kick){ try { speechSynthesis.cancel(); } catch(e){} }
+      var u = makeUtter('kotek', strat);
+      u.onstart = function(){
+        done = true; speakStrategy = idx;
+        try { localStorage.setItem('sk_speak', String(idx)); } catch(e){}
+        statusEl.textContent = '✅ Działa! Metoda ' + NAMES[idx] + ' — zapisana, gra będzie jej używać.';
+      };
+      u.onerror = function(){ if (!done) setTimeout(tryNext, 60); };
+      try { speechSynthesis.speak(u); speechSynthesis.resume(); } catch(e){}
+      setTimeout(function(){ if (!done && i === idx + 1) tryNext(); }, 1100);
+    }
+    tryNext();
   }
   // human-readable state of speech synthesis, for the on-screen sound test
   function speechInfo(){
@@ -1759,7 +1791,7 @@
     e.preventDefault(); e.stopPropagation(); ctx();
     tStatLocked = true;
     primeSpeech(); loadVoices();
-    testSpeak(tStat); // speaks "kotek" and reports engine start/end/error on screen
+    probeSpeech(tStat); // tries speech strategies, locks onto the one that works
   });
   if (window.speechSynthesis){
     var _voicesChanged = function(){ loadVoices(); if (tStat && !tStatLocked && current === 'hub') tStat.textContent = speechInfo(); };
