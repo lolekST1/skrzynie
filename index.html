@@ -1187,10 +1187,15 @@
     scWord.textContent = pic.w.toUpperCase();
     scReveal.classList.remove('pop');
     scBravo.classList.remove('show');
+    // show the fresh foil instantly (no fade-in) so the picture underneath
+    // never peeks through while the new card loads; reveal still fades out.
+    scCanvas.style.transition = 'none';
     scCanvas.style.opacity = '1';
     scCanvas.style.pointerEvents = 'auto';
     scHint.textContent = 'Zdrapuj palcem obrazek!';
     scSetup();
+    void scCanvas.offsetWidth;
+    scCanvas.style.transition = '';
   }
   function scRevealDone(){
     if (sc.done) return;
