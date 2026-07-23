@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project overview
 
 **Gierki** — a single-file HTML5 mini-game hub in Polish for a small child (~3 y.o.). The
-opening screen (`#hub`) is a menu of six cards leading to six mini-games; a 🏠 button in
+opening screen (`#hub`) is a menu of nine cards leading to nine mini-games; a 🏠 button in
 each game returns to the hub. All games share one juice toolkit (Web Audio sounds, canvas
 confetti/sparks, screen flash, `navigator.vibrate`, and `pl-PL` speech via the Web Speech API).
 
@@ -33,9 +33,22 @@ Mini-games:
 - **BĄBELKI** (`#bubbleGame`) — endless bubble-pop. Emoji bubbles rise (rAF loop, DOM nodes in
   `#bubField`); tapping pops them (confetti + tone + counter). The loop self-stops when
   `current !== 'bubble'`, so it pauses on 🏠 and restarts on re-entry.
+- **CIENIE** (`#shadowGame`) — shadow matching. A big black silhouette (an emoji rendered with
+  `filter: brightness(0)`) sits above **2 / 3 / 4** colorful emoji tiles (`sk_shadow`); the
+  child taps the one whose shape matches. Correct → the silhouette regains its colours,
+  celebrate + speech + advance; wrong taps shake with no penalty. Mirrors CO SŁYSZYSZ?'s
+  solve/advance flow (600 ms grace).
+- **PIANINO** (`#pianoGame`) — free-play animal piano. Eight rainbow keys (C-major octave, an
+  animal emoji on each) play a `tone()` note on press; a pressed finger sliding across keys
+  glissandos (`pointerover` while `pianoDown`). No win state; keys are built once (`pianoBuilt`).
+- **MALOWANIE** (`#paintGame`) — finger painting. Drag on `#paintCanvas` to draw thick round
+  strokes; a palette of color swatches picks the brush, 🌈 gives a hue-cycling rainbow brush,
+  🧽 clears. Canvas uses `devicePixelRatio` scaling and `touch-action:none`; `paintSize()`
+  refits on resize while preserving the drawing (snapshot → redraw). Chosen color persists
+  (`sk_paint`). No win state.
 
-PUZZLE, ZDRAPKA, PARY, CO SŁYSZYSZ? and BĄBELKI draw pictures from the shared `PICS` array
-(~178 simple, bold, recognizable emoji + Polish word); `randomPics(n)` returns n distinct.
+PUZZLE, ZDRAPKA, PARY, CO SŁYSZYSZ?, BĄBELKI and CIENIE draw pictures from the shared `PICS`
+array (~178 simple, bold, recognizable emoji + Polish word); `randomPics(n)` returns n distinct.
 After a win, tapping the board/card advances to the next round (600 ms grace so mashing can't
 skip it).
 
@@ -84,6 +97,14 @@ After every edit:
      `data-w` the game will speak; wrong tile gets `.wrong` (no solve), correct → `#lisBravo`.
    - **Bąbelki**: after ~1.5 s `#bubField .bubble` nodes exist; a `pointerdown` on one pops it
      and bumps `#bubCount`; leaving via 🏠 stops the rAF loop (node count stays constant).
+   - **Cienie**: `.hzchip` gives 2 / 3 / 4 `.shTile`s; the correct tile's emoji equals
+     `#shTarget`'s (a test finds it by matching `textContent`); correct tap gets `.right` and
+     shows `#shBravo`, wrong gets `.wrong` (no solve).
+   - **Pianino**: `#pianoKeys .pKey` has 8 keys; a `pointerdown` on one adds `.down` and plays a
+     tone. No win state.
+   - **Malowanie**: `#paintTools .swatch` has 11 buttons (9 colors + 🌈 + 🧽); dragging
+     `pointermove` across `#paintCanvas` paints (non-transparent pixels appear); the 🧽 tool
+     clears the canvas back to empty.
 
 ## Architecture notes (all inside index.html)
 
@@ -94,8 +115,9 @@ After every edit:
   `buildBag()` filters the bank by selected phonemes+positions (falls back to all positions if
   the combo has no words) and shuffles; prizes draw from the bag without repeats.
 - `PICS` — shared picture bank (`[word, emoji]`, ~178 entries) for PUZZLE, ZDRAPKA, PARY,
-  CO SŁYSZYSZ? and BĄBELKI; keep emoji simple and bold so a sliced/half-scratched/bubbled
-  version stays recognizable. `randomPics(n)` returns n distinct `{w,e}`.
+  CO SŁYSZYSZ?, BĄBELKI and CIENIE; keep emoji simple and bold so a
+  sliced/half-scratched/bubbled/silhouetted version stays recognizable. `randomPics(n)` returns
+  n distinct `{w,e}`.
 - **Puzzle**: state in `pz` (`cols,rows,pic,order,cell,sel,solved`); `order[slot]=correctIdx`.
   `pzLayout()` (re)computes cell size + emoji font on resize; `pzPaint()` sets each cell's
   `translate` to reveal its slice; `pzTapSlot()` swaps; solved = `order[i]===i` for all. Chosen
@@ -112,6 +134,17 @@ After every edit:
   target word (`#lisWord`) with a "Rodzicu, przeczytaj" hint so a parent can voice it.
 - **Bąbelki**: `bubbles[]` of DOM nodes moved by a single `bubStep` rAF loop that returns
   (stops) when `current !== 'bubble'`; `openBubbleGame()` clears + restarts it. No win state.
+- **Cienie**: `sh` state; `newShadow()` renders `sh.count` tiles + sets `#shTarget` to one
+  pic's emoji shown as a black silhouette (`filter: brightness(0)` in CSS). Correct tap clears
+  the filter to reveal the colours; mirrors CO SŁYSZYSZ?'s single-handler solve/advance. Count
+  persists (`sk_shadow`).
+- **Pianino**: `buildPiano()` (once) makes 8 `.pKey`s from `PIANO_NOTES`/`PIANO_COLORS`/
+  `PIANO_EMOJI`; `pianoNote()` plays a `tone()` + sparks. `pointerover` while `pianoDown`
+  glissandos across keys. No state persisted, no win.
+- **Malowanie**: `paint` state; canvas drawn with round `lineCap`/`lineJoin` strokes. `paintSize()`
+  fits the backing store to the CSS box at `devicePixelRatio`, snapshotting + redrawing so a
+  resize doesn't wipe the picture. 🌈 sets `paint.rainbow` (hue cycles per stroke segment); 🧽
+  (`paintWipe()`) clears. Selected color index persists (`sk_paint`).
 - **Speech on iOS/iPad**: iOS ignores `speechSynthesis.speak()` unless first primed *inside* a
   user gesture — every prize speaks from a timer, so a document-level `pointerdown` capture
   listener calls `primeSpeech()` once. `say()` uses **default** rate/pitch and **no explicit
@@ -125,6 +158,7 @@ After every edit:
   **mute** silences audio; the Polish "Zosia" voice may need downloading in iOS Settings.)
 - Selections persist in `localStorage`: `sk_gloski` (phonemes), `sk_pozycje` (positions),
   `sk_puzzle` (puzzle grid size), `sk_memory` (memory grid size), `sk_listen` (choice count),
+  `sk_shadow` (Cienie choice count), `sk_paint` (Malowanie brush color index),
   `sk_tts` (`1`/`0` — whether speech synthesis works on this device).
 - Input model: taps count on `pointerdown` with **no cooldown** (a 3-year-old mashes); only
   post-win screens have a grace period (chest 800 ms; puzzle/scratch 600 ms) so mashing can't

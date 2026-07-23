@@ -231,18 +231,18 @@
   #pzBoard.solved .pzCell:first-child { border-top-left-radius:16px; }
   @keyframes solvepop { 40% { transform: scale(1.08); } }
   #pzSizes { display:flex; gap:12px; margin-bottom: max(3.5vh, env(safe-area-inset-bottom, 0px) + 2vh); }
-  .szchip, .mzchip, .lzchip {
+  .szchip, .mzchip, .lzchip, .hzchip {
     border:none; border-radius:18px; padding:12px 20px;
     background: rgba(255,255,255,0.22); color:#fff;
     font-family:inherit; font-size: clamp(18px, 5vw, 26px); font-weight:800;
     text-shadow: 0 2px 0 rgba(0,0,0,0.15); cursor:pointer;
     box-shadow: inset 0 -4px 0 rgba(0,0,0,0.12); transition: transform 0.12s;
   }
-  .szchip.sel, .mzchip.sel, .lzchip.sel {
+  .szchip.sel, .mzchip.sel, .lzchip.sel, .hzchip.sel {
     background:#fff; color:#3f51b5; text-shadow:none;
     box-shadow: 0 6px 0 rgba(0,0,0,0.18);
   }
-  .szchip:active, .mzchip:active, .lzchip:active { transform: translateY(2px); }
+  .szchip:active, .mzchip:active, .lzchip:active, .hzchip:active { transform: translateY(2px); }
 
   /* ══════════════ SCRATCH GAME ══════════════ */
   #scArea { flex:1; display:flex; align-items:center; justify-content:center; width:100%; }
@@ -412,6 +412,83 @@
   }
   .bubble.pop { animation: bubpop 0.26s ease-out forwards; }
   @keyframes bubpop { to { transform: scale(1.7); opacity:0; } }
+
+  /* ══════════════ new screen backgrounds + cards (batch 2) ══════════════ */
+  #shadowGame { background: linear-gradient(160deg, #5c6bc0, #26c6da); }
+  #pianoGame  { background: linear-gradient(160deg, #5e35b1, #ec407a); }
+  #paintGame  { background: linear-gradient(160deg, #26a69a, #66bb6a); }
+  #cardShadow { background: linear-gradient(135deg,#5c6bc0,#26c6da); }
+  #cardPiano  { background: linear-gradient(135deg,#ec407a,#7e57c2); }
+  #cardPaint  { background: linear-gradient(135deg,#26a69a,#ffa726); }
+
+  /* ══════════════ CIENIE (shadows) ══════════════ */
+  #shArea { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3vh; width:100%; padding:0 12px; }
+  #shTargetWrap {
+    background:rgba(255,255,255,0.92); border-radius:30px; padding: clamp(10px,3vw,22px);
+    box-shadow: 0 10px 26px rgba(0,0,0,0.22);
+    display:flex; align-items:center; justify-content:center;
+  }
+  #shTarget {
+    line-height:1; font-size: clamp(90px, 30vw, 190px);
+    filter: brightness(0) opacity(0.82);
+    animation: shin 0.4s cubic-bezier(.2,1.7,.35,1);
+  }
+  @keyframes shin { 0% { transform: scale(0.5); opacity:0; } 100% { transform: scale(1); opacity:1; } }
+  #shChoices {
+    display:flex; flex-wrap:wrap; gap:16px; justify-content:center; align-items:center;
+    width:min(94vw, 540px);
+  }
+  .shTile {
+    width: clamp(104px, 36vw, 190px); height: clamp(104px, 36vw, 190px);
+    border-radius:26px; background:rgba(255,255,255,0.92);
+    display:flex; align-items:center; justify-content:center; line-height:1;
+    font-size: clamp(58px, 21vw, 116px); cursor:pointer;
+    box-shadow: 0 8px 0 rgba(0,0,0,0.16); transition: transform 0.12s;
+  }
+  .shTile:active { transform: translateY(4px); }
+  .shTile.wrong { animation: wrongshake 0.4s; }
+  .shTile.right { animation: rightpop 0.55s cubic-bezier(.2,1.8,.4,1); }
+  .shTile.dim { opacity:0.35; }
+  #shSizes { display:flex; gap:12px; margin-bottom: max(3.5vh, env(safe-area-inset-bottom, 0px) + 2vh); }
+
+  /* ══════════════ PIANINO (piano) ══════════════ */
+  #pianoArea { flex:1; display:flex; align-items:stretch; justify-content:center; width:100%; padding: 2vh 10px; }
+  #pianoKeys {
+    display:flex; gap: clamp(4px, 1.4vw, 10px); align-items:stretch;
+    width:min(96vw, 720px);
+  }
+  .pKey {
+    flex:1; border:none; border-radius: 0 0 20px 20px; cursor:pointer;
+    display:flex; align-items:flex-end; justify-content:center; padding-bottom: 4vh;
+    font-size: clamp(30px, 8vw, 56px); line-height:1;
+    box-shadow: inset 0 -10px 0 rgba(0,0,0,0.18), 0 8px 16px rgba(0,0,0,0.2);
+    transition: transform 0.06s;
+    -webkit-user-select:none; user-select:none;
+  }
+  .pKey.down { transform: translateY(8px) scale(0.98); box-shadow: inset 0 -3px 0 rgba(0,0,0,0.2); filter:brightness(1.12); }
+
+  /* ══════════════ MALOWANIE (finger paint) ══════════════ */
+  #paintArea { flex:1; width:100%; display:flex; align-items:stretch; justify-content:center; padding: 1.5vh 10px 0; }
+  #paintCanvas {
+    width:100%; height:100%; border-radius:22px; touch-action:none; cursor:crosshair;
+    background:#fff; box-shadow: 0 12px 26px rgba(0,0,0,0.24);
+  }
+  #paintTools {
+    display:flex; flex-wrap:wrap; gap: clamp(8px,2.4vw,14px); justify-content:center; align-items:center;
+    padding: 2vh 10px;
+    margin-bottom: max(2vh, env(safe-area-inset-bottom, 0px));
+  }
+  .swatch {
+    width: clamp(40px, 11vw, 54px); height: clamp(40px, 11vw, 54px);
+    border-radius:50%; border:4px solid rgba(255,255,255,0.7); cursor:pointer;
+    box-shadow: 0 5px 0 rgba(0,0,0,0.18); transition: transform 0.12s;
+  }
+  .swatch:active { transform: translateY(3px); }
+  .swatch.sel { border-color:#fff; transform: scale(1.16); box-shadow: 0 6px 0 rgba(0,0,0,0.22); }
+  .swatch.tool {
+    display:flex; align-items:center; justify-content:center;
+    background:rgba(255,255,255,0.25); font-size: clamp(22px, 6vw, 30px); line-height:1;
+  }
 </style>
 </head>
 <body>
@@ -444,6 +521,18 @@
       <button id="cardBubble" class="card">
         <span class="ic">🫧</span>
         <span class="txt"><span class="lab">BĄBELKI</span><span class="desc">Łap i przebijaj bąbelki</span></span>
+      </button>
+      <button id="cardShadow" class="card">
+        <span class="ic">👥</span>
+        <span class="txt"><span class="lab">CIENIE</span><span class="desc">Dopasuj obrazek do cienia</span></span>
+      </button>
+      <button id="cardPiano" class="card">
+        <span class="ic">🎹</span>
+        <span class="txt"><span class="lab">PIANINO</span><span class="desc">Graj i słuchaj dźwięków</span></span>
+      </button>
+      <button id="cardPaint" class="card">
+        <span class="ic">🎨</span>
+        <span class="txt"><span class="lab">MALOWANIE</span><span class="desc">Maluj palcem po ekranie</span></span>
       </button>
     </div>
   </div>
@@ -573,6 +662,39 @@
     <div class="gtitle">🫧 BĄBELKI</div>
     <div style="flex:1"></div>
     <div id="bubHint" class="hint">Łap bąbelki palcem — pyk!</div>
+  </div>
+
+  <!-- ══════════════ CIENIE (shadows) ══════════════ -->
+  <div id="shadowGame" class="screen">
+    <button class="topbtn left homeBtn" aria-label="Menu">🏠</button>
+    <div class="gtitle">👥 CIENIE</div>
+    <div id="shArea">
+      <div id="shTargetWrap"><div id="shTarget"></div></div>
+      <div id="shChoices"></div>
+    </div>
+    <div id="shBravo" class="bravo">BRAWO! 🎉</div>
+    <div id="shHint" class="hint">Który obrazek pasuje do cienia?</div>
+    <div id="shSizes">
+      <button class="hzchip" data-n="2">🙂 2</button>
+      <button class="hzchip" data-n="3">😃 3</button>
+      <button class="hzchip" data-n="4">🤩 4</button>
+    </div>
+  </div>
+
+  <!-- ══════════════ PIANINO (piano) ══════════════ -->
+  <div id="pianoGame" class="screen">
+    <button class="topbtn left homeBtn" aria-label="Menu">🏠</button>
+    <div class="gtitle">🎹 PIANINO</div>
+    <div id="pianoArea"><div id="pianoKeys"></div></div>
+    <div class="hint">Naciskaj klawisze — graj!</div>
+  </div>
+
+  <!-- ══════════════ MALOWANIE (finger paint) ══════════════ -->
+  <div id="paintGame" class="screen">
+    <button class="topbtn left homeBtn" aria-label="Menu">🏠</button>
+    <div class="gtitle">🎨 MALOWANIE</div>
+    <div id="paintArea"><canvas id="paintCanvas"></canvas></div>
+    <div id="paintTools"></div>
   </div>
 
   <div id="flash"></div>
@@ -953,7 +1075,10 @@
     scratch: document.getElementById('scratchGame'),
     memory: document.getElementById('memoryGame'),
     listen: document.getElementById('listenGame'),
-    bubble: document.getElementById('bubbleGame')
+    bubble: document.getElementById('bubbleGame'),
+    shadow: document.getElementById('shadowGame'),
+    piano: document.getElementById('pianoGame'),
+    paint: document.getElementById('paintGame')
   };
   var current = 'hub';
   function show(name){
@@ -980,6 +1105,9 @@
   document.getElementById('cardMemory').addEventListener('pointerdown', function(e){ e.preventDefault(); ctx(); openMemoryGame(); });
   document.getElementById('cardListen').addEventListener('pointerdown', function(e){ e.preventDefault(); ctx(); openListenGame(); });
   document.getElementById('cardBubble').addEventListener('pointerdown', function(e){ e.preventDefault(); ctx(); openBubbleGame(); });
+  document.getElementById('cardShadow').addEventListener('pointerdown', function(e){ e.preventDefault(); ctx(); openShadowGame(); });
+  document.getElementById('cardPiano').addEventListener('pointerdown', function(e){ e.preventDefault(); ctx(); openPianoGame(); });
+  document.getElementById('cardPaint').addEventListener('pointerdown', function(e){ e.preventDefault(); ctx(); openPaintGame(); });
 
   // ══════════════════════════════════════════════════════════════
   //  CHEST GAME
@@ -1760,12 +1888,247 @@
   }
 
   // ══════════════════════════════════════════════════════════════
+  //  CIENIE (shadow match — tap the emoji whose shape is the silhouette)
+  // ══════════════════════════════════════════════════════════════
+  var shTarget = document.getElementById('shTarget');
+  var shChoices = document.getElementById('shChoices');
+  var shBravo = document.getElementById('shBravo');
+  var shHint = document.getElementById('shHint');
+  var shArea = document.getElementById('shArea');
+  var sh = { count:3, target:null, solved:false, solvedAt:0, lock:false };
+
+  try { var shn = parseInt(localStorage.getItem('sk_shadow') || '0', 10); if (shn >= 2 && shn <= 4) sh.count = shn; } catch(e){}
+
+  var hzChips = Array.prototype.slice.call(document.querySelectorAll('.hzchip'));
+  hzChips.forEach(function(chip){
+    chip.addEventListener('pointerdown', function(e){
+      e.preventDefault(); e.stopPropagation();
+      sh.count = parseInt(chip.getAttribute('data-n'), 10);
+      try { localStorage.setItem('sk_shadow', String(sh.count)); } catch(e2){}
+      markShChips(); sndChip(); newShadow();
+    });
+  });
+  function markShChips(){
+    hzChips.forEach(function(chip){ chip.classList.toggle('sel', parseInt(chip.getAttribute('data-n'),10) === sh.count); });
+  }
+  function newShadow(){
+    sh.solved = false; sh.lock = false;
+    var pics = randomPics(sh.count);
+    sh.target = pics[(Math.random() * pics.length) | 0];
+    shBravo.classList.remove('show');
+    shHint.textContent = 'Który obrazek pasuje do cienia?';
+    shTarget.textContent = sh.target.e;
+    // replay the silhouette pop-in
+    shTarget.style.animation = 'none'; void shTarget.offsetWidth; shTarget.style.animation = '';
+    shChoices.innerHTML = '';
+    pics.forEach(function(p){
+      var t = document.createElement('div');
+      t.className = 'shTile'; t.textContent = p.e; t.setAttribute('data-w', p.w);
+      shChoices.appendChild(t);
+    });
+    sndNext();
+  }
+  function shTap(tile){
+    if (sh.solved || sh.lock) return;
+    if (tile.getAttribute('data-w') === sh.target.w){
+      sh.solved = true; sh.solvedAt = Date.now();
+      tile.classList.add('right');
+      shTarget.style.filter = 'none'; // reveal the true colours of the shadow
+      var tiles = shChoices.children;
+      for (var i = 0; i < tiles.length; i++) if (tiles[i] !== tile) tiles[i].classList.add('dim');
+      sndOpen(); buzz([60, 40, 120]);
+      var c = centerOf(tile); celebrate(c.x, c.y);
+      shBravo.classList.remove('show'); void shBravo.offsetWidth; shBravo.classList.add('show');
+      shHint.textContent = 'BRAWO! To ' + sh.target.w.toUpperCase() + '! Stuknij, by grać dalej.';
+      setTimeout(function(){ say(sh.target.w); }, 300);
+    } else {
+      tile.classList.remove('wrong'); void tile.offsetWidth; tile.classList.add('wrong');
+      tone(280, 0.2, 'sine', 0.14, 0, 170); buzz(50);
+      sh.lock = true;
+      setTimeout(function(){ sh.lock = false; }, 430);
+    }
+  }
+  shArea.addEventListener('pointerdown', function(e){
+    ctx();
+    if (sh.solved){ if (Date.now() - sh.solvedAt > 600) newShadow(); return; }
+    var tile = e.target.closest('.shTile');
+    if (tile) shTap(tile);
+  });
+  function openShadowGame(){
+    show('shadow');
+    shTarget.style.filter = ''; // back to silhouette (CSS handles it)
+    markShChips();
+    newShadow();
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  //  PIANINO (free-play animal piano — tap keys, hear notes)
+  // ══════════════════════════════════════════════════════════════
+  var pianoKeys = document.getElementById('pianoKeys');
+  // C major octave: do re mi fa sol la si do
+  var PIANO_NOTES = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25];
+  var PIANO_COLORS = ['#ef5350','#ff7043','#ffca28','#66bb6a','#26c6da','#42a5f5','#7e57c2','#ec407a'];
+  var PIANO_EMOJI  = ['🐤','🐸','🐰','🐱','🐶','🐵','🐷','🦄'];
+  var pianoBuilt = false, pianoDown = false;
+  function pianoNote(el){
+    if (!el) return;
+    var i = parseInt(el.getAttribute('data-i'), 10);
+    tone(PIANO_NOTES[i], 0.45, 'triangle', 0.22);
+    tone(PIANO_NOTES[i] * 2, 0.28, 'sine', 0.08, 0.01);
+    buzz(18);
+    el.classList.remove('down'); void el.offsetWidth; el.classList.add('down');
+    var c = centerOf(el); spawnSparks(c.x, c.y, 8);
+    clearTimeout(el._t); el._t = setTimeout(function(){ el.classList.remove('down'); }, 140);
+  }
+  function buildPiano(){
+    if (pianoBuilt) return;
+    pianoBuilt = true;
+    for (var i = 0; i < PIANO_NOTES.length; i++){
+      var k = document.createElement('button');
+      k.className = 'pKey'; k.setAttribute('data-i', i);
+      k.style.background = 'linear-gradient(180deg,' + PIANO_COLORS[i] + ', rgba(0,0,0,0.12))';
+      k.textContent = PIANO_EMOJI[i];
+      pianoKeys.appendChild(k);
+    }
+    // press + slide (glissando): a note fires on down and when a pressed finger enters a new key
+    pianoKeys.addEventListener('pointerdown', function(e){
+      e.preventDefault(); ctx(); pianoDown = true;
+      pianoNote(e.target.closest('.pKey'));
+    });
+    pianoKeys.addEventListener('pointerover', function(e){
+      if (!pianoDown) return;
+      pianoNote(e.target.closest('.pKey'));
+    });
+    var releaseP = function(){ pianoDown = false; };
+    addEventListener('pointerup', releaseP);
+    addEventListener('pointercancel', releaseP);
+  }
+  function openPianoGame(){ buildPiano(); pianoDown = false; show('piano'); }
+
+  // ══════════════════════════════════════════════════════════════
+  //  MALOWANIE PALCEM (finger paint on a canvas)
+  // ══════════════════════════════════════════════════════════════
+  var paintCanvas = document.getElementById('paintCanvas');
+  var pcx = paintCanvas.getContext('2d');
+  var paintTools = document.getElementById('paintTools');
+  var PAINT_COLORS = ['#ef5350','#ff9800','#ffd54f','#66bb6a','#42a5f5','#7e57c2','#f06292','#8d6e63','#212121'];
+  var paint = { color:'#ef5350', rainbow:false, hue:0, drawing:false, lx:0, ly:0, built:false, w:0, h:0 };
+
+  try { var pcIdx = parseInt(localStorage.getItem('sk_paint') || '0', 10); if (pcIdx >= 0 && pcIdx < PAINT_COLORS.length) paint.color = PAINT_COLORS[pcIdx]; } catch(e){}
+
+  function buildPaintTools(){
+    if (paint.built) return;
+    paint.built = true;
+    PAINT_COLORS.forEach(function(col, i){
+      var s = document.createElement('button');
+      s.className = 'swatch'; s.setAttribute('data-col', col);
+      s.style.background = col;
+      paintTools.appendChild(s);
+    });
+    var rainbow = document.createElement('button');
+    rainbow.className = 'swatch tool'; rainbow.id = 'paintRainbow'; rainbow.textContent = '🌈';
+    paintTools.appendChild(rainbow);
+    var clear = document.createElement('button');
+    clear.className = 'swatch tool'; clear.id = 'paintClear'; clear.textContent = '🧽';
+    paintTools.appendChild(clear);
+
+    paintTools.addEventListener('pointerdown', function(e){
+      e.preventDefault(); e.stopPropagation(); ctx();
+      var t = e.target.closest('.swatch'); if (!t) return;
+      if (t.id === 'paintClear'){ paintWipe(); sndChip(); return; }
+      if (t.id === 'paintRainbow'){
+        paint.rainbow = true; paint.color = null; sndChip(); markSwatches(t); return;
+      }
+      paint.rainbow = false;
+      paint.color = t.getAttribute('data-col');
+      var idx = PAINT_COLORS.indexOf(paint.color);
+      try { localStorage.setItem('sk_paint', String(idx)); } catch(e2){}
+      sndChip(); markSwatches(t);
+    });
+  }
+  function markSwatches(sel){
+    var ss = paintTools.querySelectorAll('.swatch');
+    for (var i = 0; i < ss.length; i++) ss[i].classList.toggle('sel', ss[i] === sel);
+  }
+  function paintSize(){
+    // fit the backing store to the CSS box, preserving the current drawing
+    var r = paintCanvas.getBoundingClientRect();
+    var w = Math.max(1, Math.round(r.width)), h = Math.max(1, Math.round(r.height));
+    var dpr = window.devicePixelRatio || 1;
+    if (paint.w === w && paint.h === h && paintCanvas.width) return;
+    var snap = null;
+    if (paintCanvas.width && paintCanvas.height){
+      snap = document.createElement('canvas');
+      snap.width = paintCanvas.width; snap.height = paintCanvas.height;
+      snap.getContext('2d').drawImage(paintCanvas, 0, 0);
+    }
+    paint.w = w; paint.h = h;
+    paintCanvas.width = w * dpr; paintCanvas.height = h * dpr;
+    pcx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    pcx.lineCap = 'round'; pcx.lineJoin = 'round';
+    if (snap) pcx.drawImage(snap, 0, 0, snap.width, snap.height, 0, 0, w, h);
+  }
+  function paintWipe(){
+    pcx.save();
+    pcx.setTransform(1, 0, 0, 1, 0, 0);
+    pcx.clearRect(0, 0, paintCanvas.width, paintCanvas.height);
+    pcx.restore();
+  }
+  function paintPos(e){
+    var r = paintCanvas.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+  function paintStroke(x, y){
+    var lw = Math.max(14, Math.min(paint.w, paint.h) * 0.055);
+    pcx.strokeStyle = paint.rainbow ? ('hsl(' + (paint.hue % 360) + ',85%,55%)') : paint.color;
+    pcx.lineWidth = lw;
+    pcx.beginPath();
+    pcx.moveTo(paint.lx, paint.ly);
+    pcx.lineTo(x, y);
+    pcx.stroke();
+    // round dot so single taps leave a blob too
+    pcx.fillStyle = pcx.strokeStyle;
+    pcx.beginPath(); pcx.arc(x, y, lw / 2, 0, 7); pcx.fill();
+    paint.lx = x; paint.ly = y;
+    if (paint.rainbow) paint.hue += 6;
+  }
+  paintCanvas.addEventListener('pointerdown', function(e){
+    e.preventDefault(); ctx();
+    try { paintCanvas.setPointerCapture(e.pointerId); } catch(e2){}
+    paint.drawing = true;
+    var p = paintPos(e); paint.lx = p.x; paint.ly = p.y;
+    paintStroke(p.x, p.y);
+    tone(400 + Math.random() * 200, 0.08, 'sine', 0.06, 0, 620);
+  });
+  paintCanvas.addEventListener('pointermove', function(e){
+    if (!paint.drawing) return;
+    e.preventDefault();
+    var p = paintPos(e); paintStroke(p.x, p.y);
+  });
+  function paintEnd(){ paint.drawing = false; }
+  paintCanvas.addEventListener('pointerup', paintEnd);
+  paintCanvas.addEventListener('pointercancel', paintEnd);
+  paintCanvas.addEventListener('pointerleave', paintEnd);
+  function openPaintGame(){
+    buildPaintTools();
+    paint.drawing = false;
+    if (!paint.rainbow && !paintTools.querySelector('.swatch.sel')){
+      var cur = paintTools.querySelector('.swatch[data-col="' + paint.color + '"]');
+      if (cur) markSwatches(cur);
+    }
+    show('paint');
+    // wait for the screen to lay out before measuring the canvas box
+    requestAnimationFrame(function(){ requestAnimationFrame(paintSize); });
+  }
+
+  // ══════════════════════════════════════════════════════════════
   //  RESIZE + INIT
   // ══════════════════════════════════════════════════════════════
   addEventListener('resize', function(){
     if (current === 'puzzle' && pz.pic) pzLayout();
     if (current === 'scratch' && sc.pic && !sc.done) scSetup();
     if (current === 'memory' && mem.deck.length) memLayout();
+    if (current === 'paint') paintSize();
   });
 
   // unlock audio + speech on the very first user gesture (needed on iOS/iPad)
@@ -1775,6 +2138,7 @@
   markSizeChips();
   markMemChips();
   markLisChips();
+  markShChips();
   show('hub');
 })();
 </script>
