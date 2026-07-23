@@ -4,20 +4,42 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#4fc3f7">
-<title>Skrzynie Słówek — gra logopedyczna</title>
+<title>Gierki — mini gry dla malucha</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none; }
   html, body { height:100%; overflow:hidden; touch-action:manipulation; }
   body {
     font-family: "Baloo 2", "Comic Sans MS", "Segoe UI", system-ui, sans-serif;
-    background: var(--bg, #4fc3f7);
-    transition: background 0.8s ease;
-    display:flex; flex-direction:column; align-items:center; justify-content:space-between;
+    background:#4fc3f7;
     position:fixed; inset:0;
   }
 
-  /* ── title ── */
-  #title {
+  /* ── screen system ── */
+  .screen {
+    position:fixed; inset:0; display:none;
+    flex-direction:column; align-items:center; justify-content:space-between;
+  }
+  .screen.on { display:flex; }
+  #chestGame { background: var(--bg, #4fc3f7); transition: background 0.8s ease; }
+  #hub       { background: linear-gradient(160deg, #42a5f5, #7e57c2); justify-content:flex-start; overflow-y:auto; }
+  #puzzleGame{ background: linear-gradient(160deg, #26c6da, #5c6bc0); }
+  #scratchGame{ background: linear-gradient(160deg, #ffa726, #ec407a); }
+
+  /* ── shared top buttons ── */
+  .topbtn {
+    position:absolute; top: max(12px, env(safe-area-inset-top, 0px) + 6px);
+    background:rgba(255,255,255,0.25); border:none; border-radius:999px; padding:8px 16px;
+    color:#fff; font-size:20px; font-weight:800; text-shadow:0 2px 0 rgba(0,0,0,0.12);
+    font-family:inherit; cursor:pointer; z-index:8;
+  }
+  .topbtn.left { left:14px; }
+  .topbtn.right{ right:14px; }
+  .topbtn:active { transform: translateY(2px); }
+  /* chest has two stacked left buttons */
+  #pickBtn { top: max(64px, env(safe-area-inset-top, 0px) + 58px); }
+
+  /* ── shared title / counter / hint / bravo ── */
+  .gtitle {
     margin-top: max(9vh, env(safe-area-inset-top, 0px) + 60px);
     padding: 0 16px;
     color:#fff; font-size: clamp(26px, 7vw, 48px); font-weight:800;
@@ -30,16 +52,54 @@
   #counter {
     position:absolute; top: max(12px, env(safe-area-inset-top, 0px) + 6px); right:14px;
     background:rgba(255,255,255,0.25); border-radius:999px; padding:8px 16px;
-    color:#fff; font-size:22px; font-weight:800; text-shadow:0 2px 0 rgba(0,0,0,0.12);
-  }
-  #pickBtn {
-    position:absolute; top: max(12px, env(safe-area-inset-top, 0px) + 6px); left:14px;
-    background:rgba(255,255,255,0.25); border:none; border-radius:999px; padding:8px 16px;
-    color:#fff; font-size:20px; font-weight:800; text-shadow:0 2px 0 rgba(0,0,0,0.12);
-    font-family:inherit; cursor:pointer; z-index:8;
+    color:#fff; font-size:22px; font-weight:800; text-shadow:0 2px 0 rgba(0,0,0,0.12); z-index:8;
   }
 
-  /* ── chest stage ── */
+  .hint {
+    color:#fff; font-size: clamp(19px, 5vw, 30px); font-weight:700;
+    text-align:center; text-shadow:0 2px 0 rgba(0,0,0,0.12);
+    margin-bottom: max(4vh, env(safe-area-inset-bottom, 0px) + 2.5vh);
+    padding: 0 20px;
+    animation: hintpulse 1.6s ease-in-out infinite;
+  }
+  @keyframes hintpulse { 0%,100% { transform:scale(1); opacity:0.95; } 50% { transform:scale(1.06); opacity:1; } }
+
+  .bravo {
+    position:absolute; left:50%; top:12%;
+    transform: translateX(-50%) scale(0); z-index:6; pointer-events:none;
+    color:#fff; font-size: clamp(34px, 9vw, 64px); font-weight:800;
+    text-shadow: 0 4px 0 rgba(0,0,0,0.15); white-space:nowrap;
+  }
+  .bravo.show { animation: bravopop 0.6s cubic-bezier(.2,1.8,.4,1) 0.25s forwards; }
+  @keyframes bravopop { to { transform: translateX(-50%) scale(1); } }
+
+  /* ══════════════ HUB ══════════════ */
+  #hub .gtitle { margin-top: max(11vh, env(safe-area-inset-top, 0px) + 70px); }
+  #hub .sub {
+    color:rgba(255,255,255,0.9); font-size: clamp(16px, 4.4vw, 22px); font-weight:700;
+    text-align:center; margin:8px 20px 4vh; text-shadow:0 2px 0 rgba(0,0,0,0.1);
+  }
+  #cards {
+    display:flex; flex-direction:column; gap:18px;
+    width:min(90vw, 440px); padding-bottom:5vh;
+  }
+  .card {
+    border:none; border-radius:28px; cursor:pointer; font-family:inherit;
+    display:flex; align-items:center; gap:20px; padding:20px 26px;
+    box-shadow: 0 8px 0 rgba(0,0,0,0.18);
+    transition: transform 0.12s;
+    color:#fff; text-align:left;
+  }
+  .card:active { transform: translateY(5px); box-shadow: 0 3px 0 rgba(0,0,0,0.18); }
+  .card .ic { font-size: clamp(44px, 13vw, 64px); line-height:1; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2)); }
+  .card .lab { font-size: clamp(26px, 7vw, 38px); font-weight:800; letter-spacing:1px; text-shadow:0 2px 0 rgba(0,0,0,0.18); }
+  .card .desc { font-size: clamp(14px, 3.6vw, 18px); font-weight:700; opacity:0.92; }
+  .card .txt { display:flex; flex-direction:column; gap:2px; }
+  #cardChest  { background: linear-gradient(135deg,#ffca28,#fb8c00); }
+  #cardPuzzle { background: linear-gradient(135deg,#26c6da,#3f51b5); }
+  #cardScratch{ background: linear-gradient(135deg,#ec407a,#ab47bc); }
+
+  /* ══════════════ CHEST GAME ══════════════ */
   #stage {
     flex:1; display:flex; align-items:center; justify-content:center;
     width:100%; position:relative;
@@ -80,7 +140,6 @@
   #chestBtn svg { width:100%; height:100%; overflow:visible; display:block;
     filter: drop-shadow(0 18px 22px rgba(0,0,0,0.22)); }
 
-  /* lid opens */
   #lidG { transition: transform 0.45s cubic-bezier(.3,1.9,.4,1); transform-origin: 100px 78px; }
   .open #lidG { transform: translateY(-58px) rotate(-24deg); }
   #glowBurst { opacity:0; transform-origin:100px 105px; }
@@ -91,7 +150,6 @@
     100% { opacity:0; transform: scale(3.2); }
   }
 
-  /* rotating rays behind chest during prize reveal */
   #rays {
     position:absolute; left:50%; top:50%; width:150vmax; height:150vmax;
     margin-left:-75vmax; margin-top:-75vmax;
@@ -103,7 +161,6 @@
   #rays.on { opacity:1; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* prize: emoji + word */
   #prize {
     position:absolute; left:50%; top:50%;
     transform: translate(-50%,-50%) scale(0);
@@ -127,16 +184,7 @@
     60% { transform: translate(-50%,-64%) scale(1.15) rotate(4deg); }
     100% { transform: translate(-50%,-56%) scale(1) rotate(0deg); }
   }
-  #bravo {
-    position:absolute; left:50%; top:12%;
-    transform: translateX(-50%) scale(0); z-index:5; pointer-events:none;
-    color:#fff; font-size: clamp(34px, 9vw, 64px); font-weight:800;
-    text-shadow: 0 4px 0 rgba(0,0,0,0.15); white-space:nowrap;
-  }
-  #bravo.show { animation: bravopop 0.6s cubic-bezier(.2,1.8,.4,1) 0.25s forwards; }
-  @keyframes bravopop { to { transform: translateX(-50%) scale(1); } }
 
-  /* ── tap progress dots ── */
   #dots { display:flex; gap:26px; margin-bottom:10px; }
   .dot {
     width: clamp(54px, 16vw, 84px); height: clamp(54px, 16vw, 84px);
@@ -150,20 +198,74 @@
   .dot.done svg path { stroke: var(--accent, #2e9be6); }
   @keyframes dotpop { 50% { transform: scale(1.35); } }
 
-  #hint {
-    color:#fff; font-size: clamp(19px, 5vw, 30px); font-weight:700;
-    text-align:center; text-shadow:0 2px 0 rgba(0,0,0,0.12);
-    margin-bottom: max(4vh, env(safe-area-inset-bottom, 0px) + 2.5vh);
-    padding: 0 20px;
-    animation: hintpulse 1.6s ease-in-out infinite;
-  }
-  @keyframes hintpulse { 0%,100% { transform:scale(1); opacity:0.95; } 50% { transform:scale(1.06); opacity:1; } }
-
-  /* ambient floating sparkles */
   .amb { position:absolute; color:rgba(255,255,255,0.7); pointer-events:none;
     animation: ambfloat 5s ease-in-out infinite; }
   @keyframes ambfloat { 0%,100% { transform: translateY(0) scale(1); opacity:0.5; } 50% { transform: translateY(-24px) scale(1.25); opacity:1; } }
 
+  /* ══════════════ PUZZLE GAME ══════════════ */
+  #pzArea { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; width:100%; }
+  #pzTargetWrap { display:flex; align-items:center; gap:12px; }
+  #pzTarget {
+    width: clamp(48px, 14vw, 72px); height: clamp(48px, 14vw, 72px);
+    display:flex; align-items:center; justify-content:center; line-height:1;
+    background:rgba(255,255,255,0.28); border-radius:16px;
+    box-shadow: inset 0 -3px 0 rgba(0,0,0,0.1);
+  }
+  #pzTargetLabel { color:#fff; font-size: clamp(14px, 3.8vw, 18px); font-weight:700; text-shadow:0 2px 0 rgba(0,0,0,0.12); }
+  #pzBoard {
+    display:grid; gap:5px; padding:6px;
+    background:rgba(0,0,0,0.14); border-radius:18px;
+    box-shadow: 0 12px 26px rgba(0,0,0,0.22);
+    transition: gap 0.35s, padding 0.35s, transform 0.35s;
+  }
+  .pzCell {
+    overflow:hidden; border-radius:10px; cursor:pointer;
+    background:rgba(255,255,255,0.12); position:relative;
+    transition: transform 0.14s;
+  }
+  .pzInner { display:flex; align-items:center; justify-content:center; line-height:1; will-change:transform; }
+  .pzCell.sel { transform: scale(1.08); z-index:3; box-shadow: 0 0 0 4px #fff, 0 8px 16px rgba(0,0,0,0.3); border-radius:12px; }
+  .pzCell.sel .pzInner { filter: brightness(1.08); }
+  #pzBoard.solved { gap:0; padding:0; animation: solvepop 0.6s cubic-bezier(.2,1.8,.4,1); }
+  #pzBoard.solved .pzCell { border-radius:0; background:transparent; }
+  #pzBoard.solved .pzCell:first-child { border-top-left-radius:16px; }
+  @keyframes solvepop { 40% { transform: scale(1.08); } }
+  #pzSizes { display:flex; gap:12px; margin-bottom: max(3.5vh, env(safe-area-inset-bottom, 0px) + 2vh); }
+  .szchip {
+    border:none; border-radius:18px; padding:12px 20px;
+    background: rgba(255,255,255,0.22); color:#fff;
+    font-family:inherit; font-size: clamp(18px, 5vw, 26px); font-weight:800;
+    text-shadow: 0 2px 0 rgba(0,0,0,0.15); cursor:pointer;
+    box-shadow: inset 0 -4px 0 rgba(0,0,0,0.12); transition: transform 0.12s;
+  }
+  .szchip.sel {
+    background:#fff; color:#3f51b5; text-shadow:none;
+    box-shadow: 0 6px 0 rgba(0,0,0,0.18);
+  }
+  .szchip:active { transform: translateY(2px); }
+
+  /* ══════════════ SCRATCH GAME ══════════════ */
+  #scArea { flex:1; display:flex; align-items:center; justify-content:center; width:100%; }
+  #scCard {
+    position:relative; border-radius:26px; overflow:hidden;
+    box-shadow: 0 14px 30px rgba(0,0,0,0.28);
+    background: linear-gradient(160deg,#fff,#ffe0b2);
+  }
+  #scReveal {
+    position:absolute; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:2vh;
+  }
+  #scEmoji { line-height:1; filter: drop-shadow(0 8px 12px rgba(0,0,0,0.22)); }
+  #scWord {
+    font-size: clamp(26px, 7.5vw, 44px); font-weight:800; letter-spacing:2px;
+    color:#5d4037; text-shadow: 0 2px 0 rgba(255,255,255,0.5);
+  }
+  #scCanvas { position:absolute; inset:0; touch-action:none; cursor:pointer;
+    transition: opacity 0.45s; }
+  #scReveal.pop #scEmoji { animation: scpop 0.7s cubic-bezier(.2,1.7,.35,1); }
+  @keyframes scpop { 0% { transform: scale(0.4); } 60% { transform: scale(1.18); } 100% { transform: scale(1); } }
+
+  /* ── shared fx ── */
   #fx { position:fixed; inset:0; pointer-events:none; z-index:10; }
   #flash { position:fixed; inset:0; background:#fff; opacity:0; pointer-events:none; z-index:9; }
   #flash.go { animation: flashout 0.5s ease-out; }
@@ -224,59 +326,117 @@
 </style>
 </head>
 <body>
-  <div id="rays"></div>
-  <button id="pickBtn" aria-label="Zmień głoski">🔤 Głoski</button>
-  <div id="counter">⭐ <span id="count">0</span></div>
-  <div id="title">SKRZYNIA</div>
 
-  <div id="stage">
-    <button id="chestBtn" aria-label="Skrzynia">
-      <svg viewBox="0 0 200 185">
-        <!-- glow from inside -->
-        <g id="glowBurst">
-          <circle cx="100" cy="100" r="46" fill="#fff8c8" opacity="0.95"/>
-          <circle cx="100" cy="100" r="70" fill="#ffe97a" opacity="0.45"/>
-        </g>
-        <!-- body -->
-        <g id="bodyG">
-          <rect x="22" y="78" width="156" height="88" rx="14" class="c-body"/>
-          <rect x="34" y="86" width="132" height="70" rx="9" class="c-inner"/>
-          <rect x="34" y="104" width="132" height="7" class="c-plank" opacity="0.5"/>
-          <rect x="34" y="126" width="132" height="7" class="c-plank" opacity="0.5"/>
-          <!-- side straps -->
-          <rect x="40" y="72" width="22" height="100" rx="10" class="c-trim"/>
-          <rect x="138" y="72" width="22" height="100" rx="10" class="c-trim"/>
-          <rect x="40" y="72" width="22" height="100" rx="10" fill="rgba(0,0,0,0.08)" transform="translate(0,4)"/>
-        </g>
-        <!-- lid -->
-        <g id="lidG">
-          <path d="M22 82 Q22 40 62 38 L138 38 Q178 40 178 82 L178 90 L22 90 Z" class="c-lid"/>
-          <path d="M40 84 Q42 52 70 50 L130 50 Q158 52 160 84 L160 88 L40 88 Z" class="c-lidin"/>
-          <rect x="40" y="34" width="22" height="54" rx="10" class="c-trim"/>
-          <rect x="138" y="34" width="22" height="54" rx="10" class="c-trim"/>
-        </g>
-        <!-- lock -->
-        <g id="lockG">
-          <ellipse cx="100" cy="96" rx="26" ry="22" class="c-trim"/>
-          <path d="M84 96 Q84 82 100 82 Q116 82 116 96 Q116 112 100 114 Q84 112 84 96 Z" fill="#fff"/>
-        </g>
-      </svg>
-    </button>
-    <div id="prize"><div id="pEmoji"></div><div id="pWord"></div></div>
-    <div id="bravo">BRAWO! 🎉</div>
+  <!-- ══════════════ HUB ══════════════ -->
+  <div id="hub" class="screen on">
+    <div class="gtitle">🎪 GIERKI</div>
+    <div class="sub">Wybierz zabawę!</div>
+    <div id="cards">
+      <button id="cardChest" class="card">
+        <span class="ic">🧰</span>
+        <span class="txt"><span class="lab">SKRZYNIE</span><span class="desc">Otwórz skrzynię ze słówkami</span></span>
+      </button>
+      <button id="cardPuzzle" class="card">
+        <span class="ic">🧩</span>
+        <span class="txt"><span class="lab">PUZZLE</span><span class="desc">Ułóż obrazek z kawałków</span></span>
+      </button>
+      <button id="cardScratch" class="card">
+        <span class="ic">🪙</span>
+        <span class="txt"><span class="lab">ZDRAPKA</span><span class="desc">Zdrap i odkryj obrazek</span></span>
+      </button>
+    </div>
   </div>
 
-  <div id="dots">
-    <div class="dot"><svg viewBox="0 0 100 100"><path d="M50 78 L50 30 M30 48 L50 28 L70 48"/></svg></div>
-    <div class="dot"><svg viewBox="0 0 100 100"><path d="M50 78 L50 30 M30 48 L50 28 L70 48"/></svg></div>
-    <div class="dot"><svg viewBox="0 0 100 100"><path d="M50 78 L50 30 M30 48 L50 28 L70 48"/></svg></div>
+  <!-- ══════════════ CHEST GAME ══════════════ -->
+  <div id="chestGame" class="screen">
+    <div id="rays"></div>
+    <button class="topbtn left homeBtn" aria-label="Menu">🏠</button>
+    <button id="pickBtn" class="topbtn left" aria-label="Zmień głoski">🔤 Głoski</button>
+    <div id="counter">⭐ <span id="count">0</span></div>
+    <div id="title" class="gtitle">SKRZYNIA</div>
+
+    <div id="stage">
+      <button id="chestBtn" aria-label="Skrzynia">
+        <svg viewBox="0 0 200 185">
+          <g id="glowBurst">
+            <circle cx="100" cy="100" r="46" fill="#fff8c8" opacity="0.95"/>
+            <circle cx="100" cy="100" r="70" fill="#ffe97a" opacity="0.45"/>
+          </g>
+          <g id="bodyG">
+            <rect x="22" y="78" width="156" height="88" rx="14" class="c-body"/>
+            <rect x="34" y="86" width="132" height="70" rx="9" class="c-inner"/>
+            <rect x="34" y="104" width="132" height="7" class="c-plank" opacity="0.5"/>
+            <rect x="34" y="126" width="132" height="7" class="c-plank" opacity="0.5"/>
+            <rect x="40" y="72" width="22" height="100" rx="10" class="c-trim"/>
+            <rect x="138" y="72" width="22" height="100" rx="10" class="c-trim"/>
+            <rect x="40" y="72" width="22" height="100" rx="10" fill="rgba(0,0,0,0.08)" transform="translate(0,4)"/>
+          </g>
+          <g id="lidG">
+            <path d="M22 82 Q22 40 62 38 L138 38 Q178 40 178 82 L178 90 L22 90 Z" class="c-lid"/>
+            <path d="M40 84 Q42 52 70 50 L130 50 Q158 52 160 84 L160 88 L40 88 Z" class="c-lidin"/>
+            <rect x="40" y="34" width="22" height="54" rx="10" class="c-trim"/>
+            <rect x="138" y="34" width="22" height="54" rx="10" class="c-trim"/>
+          </g>
+          <g id="lockG">
+            <ellipse cx="100" cy="96" rx="26" ry="22" class="c-trim"/>
+            <path d="M84 96 Q84 82 100 82 Q116 82 116 96 Q116 112 100 114 Q84 112 84 96 Z" fill="#fff"/>
+          </g>
+        </svg>
+      </button>
+      <div id="prize"><div id="pEmoji"></div><div id="pWord"></div></div>
+      <div id="bravo" class="bravo">BRAWO! 🎉</div>
+    </div>
+
+    <div id="dots">
+      <div class="dot"><svg viewBox="0 0 100 100"><path d="M50 78 L50 30 M30 48 L50 28 L70 48"/></svg></div>
+      <div class="dot"><svg viewBox="0 0 100 100"><path d="M50 78 L50 30 M30 48 L50 28 L70 48"/></svg></div>
+      <div class="dot"><svg viewBox="0 0 100 100"><path d="M50 78 L50 30 M30 48 L50 28 L70 48"/></svg></div>
+    </div>
+    <div id="hint" class="hint">Naciśnij skrzynię 3 razy!</div>
   </div>
-  <div id="hint">Naciśnij skrzynię 3 razy!</div>
+
+  <!-- ══════════════ PUZZLE GAME ══════════════ -->
+  <div id="puzzleGame" class="screen">
+    <button class="topbtn left homeBtn" aria-label="Menu">🏠</button>
+    <div class="gtitle">🧩 PUZZLE</div>
+    <div id="pzArea">
+      <div id="pzTargetWrap">
+        <div id="pzTarget"></div>
+        <div id="pzTargetLabel"></div>
+      </div>
+      <div id="pzBoard"></div>
+    </div>
+    <div id="pzBravo" class="bravo">BRAWO! 🎉</div>
+    <div id="pzHint" class="hint">Stukaj dwa kawałki, by je zamienić!</div>
+    <div id="pzSizes">
+      <button class="szchip" data-c="2" data-r="2">2×2</button>
+      <button class="szchip" data-c="3" data-r="2">3×2</button>
+      <button class="szchip" data-c="3" data-r="3">3×3</button>
+    </div>
+  </div>
+
+  <!-- ══════════════ SCRATCH GAME ══════════════ -->
+  <div id="scratchGame" class="screen">
+    <button class="topbtn left homeBtn" aria-label="Menu">🏠</button>
+    <div class="gtitle">🪙 ZDRAPKA</div>
+    <div id="scArea">
+      <div id="scCard">
+        <div id="scReveal">
+          <div id="scEmoji"></div>
+          <div id="scWord"></div>
+        </div>
+        <canvas id="scCanvas"></canvas>
+      </div>
+    </div>
+    <div id="scBravo" class="bravo">BRAWO! 🎉</div>
+    <div id="scHint" class="hint">Zdrapuj palcem obrazek!</div>
+  </div>
 
   <div id="flash"></div>
   <canvas id="fx"></canvas>
 
-  <div id="picker" class="on">
+  <!-- ══════════════ PHONEME PICKER (chest) ══════════════ -->
+  <div id="picker">
     <h1>🔤 Jaką głoskę ćwiczymy?</h1>
     <p>Wybierz jedną lub kilka głosek — nagrody będą je ćwiczyć</p>
     <div id="chips"></div>
@@ -289,7 +449,11 @@
 (function(){
   'use strict';
 
-  // ── themes: each chest a new colour ─────────────────────────
+  // ══════════════════════════════════════════════════════════════
+  //  DATA
+  // ══════════════════════════════════════════════════════════════
+
+  // chest themes: each chest a new colour
   var THEMES = [
     { name:'ZŁOTA SKRZYNIA',     bg:'#4fc3f7', accent:'#2e9be6', body:'#ffca28', inner:'#42a5f5', plank:'#1e88e5', lid:'#ffd54f', lidin:'#64b5f6', trim:'#ffb300' },
     { name:'FIOLETOWA SKRZYNIA', bg:'#9575cd', accent:'#7e57c2', body:'#7e57c2', inner:'#5e35b1', plank:'#4527a0', lid:'#9575cd', lidin:'#673ab7', trim:'#ffca28' },
@@ -301,7 +465,7 @@
     { name:'TĘCZOWA SKRZYNIA',   bg:'#26c6da', accent:'#00acc1', body:'#ab47bc', inner:'#26c6da', plank:'#0097a7', lid:'#ffca28', lidin:'#4dd0e1', trim:'#ff7043' }
   ];
 
-  // ── logopedic word bank: phoneme → [word, emoji] ─────────────
+  // logopedic word bank: phoneme → [word, emoji]
   var PHONEMES = {
   'SZ': [
     ['szalik','🧣'],['szyszka','🌰'],['gruszka','🍐'],['mysz','🐭'],['kosz','🧺'],['muszla','🐚'],['koszula','👕'],['kalosze','👢'],
@@ -408,70 +572,53 @@
     ]
   };
   var PHONEME_ORDER = ['SZ','Ż','CZ','S','Z','C','R','L','K','G','P','B','T','D','F','W'];
-  // which letter groups count as the practised sound inside a word
   var MATCHERS = { 'Ż': ['ż','rz'] };
 
-  var chestBtn = document.getElementById('chestBtn');
-  var titleEl = document.getElementById('title');
-  var hintEl = document.getElementById('hint');
-  var prizeEl = document.getElementById('prize');
-  var pEmojiEl = document.getElementById('pEmoji');
-  var pWordEl = document.getElementById('pWord');
-  var bravoEl = document.getElementById('bravo');
-  var raysEl = document.getElementById('rays');
+  // simple, bold, easily recognizable pictures for puzzle + scratch
+  var PICS = [
+    // zwierzątka
+    ['kotek','🐱'],['piesek','🐶'],['myszka','🐭'],['chomiczek','🐹'],['króliczek','🐰'],['lisek','🦊'],
+    ['niedźwiadek','🐻'],['panda','🐼'],['koala','🐨'],['tygrysek','🐯'],['lew','🦁'],['krówka','🐮'],
+    ['świnka','🐷'],['żabka','🐸'],['małpka','🐵'],['kurczaczek','🐤'],['kurka','🐔'],['pingwin','🐧'],
+    ['ptaszek','🐦'],['sówka','🦉'],['kaczuszka','🦆'],['łabędź','🦢'],['papużka','🦜'],['orzełek','🦅'],
+    ['pszczółka','🐝'],['biedronka','🐞'],['motylek','🦋'],['ślimak','🐌'],['gąsienica','🐛'],['mrówka','🐜'],
+    ['żółwik','🐢'],['wężyk','🐍'],['jaszczurka','🦎'],['rybka','🐟'],['rybka tropikalna','🐠'],['delfinek','🐬'],
+    ['wieloryb','🐳'],['rekin','🦈'],['ośmiornica','🐙'],['krab','🦀'],['muszelka','🐚'],['słonik','🐘'],
+    ['żyrafka','🦒'],['zebra','🦓'],['nosorożec','🦏'],['hipopotam','🦛'],['wielbłąd','🐫'],['lama','🦙'],
+    ['kangurek','🦘'],['jeżyk','🦔'],['dinozaur','🦕'],['smok','🐉'],['konik','🐴'],['owieczka','🐑'],
+    ['kózka','🐐'],['wilczek','🐺'],['szopek','🦝'],['foczka','🦭'],['indyk','🦃'],['jednorożec','🦄'],
+    // owoce i warzywa
+    ['jabłko','🍎'],['gruszka','🍐'],['pomarańcza','🍊'],['cytryna','🍋'],['banan','🍌'],['arbuz','🍉'],
+    ['winogrona','🍇'],['truskawka','🍓'],['wisienki','🍒'],['brzoskwinia','🍑'],['ananas','🍍'],['mango','🥭'],
+    ['kokos','🥥'],['kiwi','🥝'],['pomidorek','🍅'],['marchewka','🥕'],['kukurydza','🌽'],['ogórek','🥒'],
+    ['brokuł','🥦'],['ziemniak','🥔'],['cebulka','🧅'],['papryczka','🌶️'],['grzybek','🍄'],['kasztan','🌰'],
+    // jedzenie
+    ['chlebek','🍞'],['ser','🧀'],['jajko','🥚'],['naleśnik','🥞'],['hamburger','🍔'],['frytki','🍟'],
+    ['pizza','🍕'],['hot dog','🌭'],['kanapka','🥪'],['lody','🍦'],['lizak','🍭'],['cukierek','🍬'],
+    ['czekolada','🍫'],['ciastko','🍪'],['babeczka','🧁'],['pączek','🍩'],['tort','🎂'],['popcorn','🍿'],
+    // pojazdy
+    ['autko','🚗'],['autobus','🚌'],['taksówka','🚕'],['ciężarówka','🚚'],['traktorek','🚜'],['policja','🚓'],
+    ['karetka','🚑'],['straż','🚒'],['pociąg','🚂'],['helikopter','🚁'],['samolot','✈️'],['statek','🚢'],
+    ['żaglówka','⛵'],['rowerek','🚲'],['hulajnoga','🛴'],['rakieta','🚀'],['latawiec','🪁'],
+    // przyroda i niebo
+    ['słońce','☀️'],['księżyc','🌙'],['gwiazdka','⭐'],['tęcza','🌈'],['chmurka','☁️'],['śnieżynka','❄️'],
+    ['bałwanek','⛄'],['ognik','🔥'],['kropelka','💧'],['błyskawica','⚡'],['wulkan','🌋'],['drzewko','🌳'],
+    ['choinka','🎄'],['palma','🌴'],['kaktus','🌵'],['tulipan','🌷'],['różyczka','🌹'],['słonecznik','🌻'],
+    ['stokrotka','🌼'],['kwiatek','🌸'],['koniczynka','🍀'],['listek','🍁'],['planeta','🪐'],['ziemia','🌍'],
+    // zabawki i przedmioty
+    ['miś','🧸'],['prezent','🎁'],['balonik','🎈'],['piłka','⚽'],['koszykówka','🏀'],['tenis','🎾'],
+    ['puchar','🏆'],['medal','🏅'],['korona','👑'],['diamencik','💎'],['dzwoneczek','🔔'],['kluczyk','🔑'],
+    ['żaróweczka','💡'],['telefon','📱'],['aparat','📷'],['budzik','⏰'],['książka','📖'],['ołówek','✏️'],
+    ['kredka','🖍️'],['nożyczki','✂️'],['farbki','🎨'],['gitara','🎸'],['bębenek','🥁'],['trąbka','🎺'],
+    ['parasolka','☂️'],['okulary','👓'],['kapelusz','🎩'],['bucik','👟'],['czapeczka','🧢'],['plecaczek','🎒'],
+    ['walizka','🧳'],['wiaderko','🪣'],['latarka','🔦'],['serce','❤️'],['dynia','🎃']
+  ];
+
+  // ══════════════════════════════════════════════════════════════
+  //  SHARED UTILITIES (audio, speech, confetti, haptics)
+  // ══════════════════════════════════════════════════════════════
+
   var flashEl = document.getElementById('flash');
-  var countEl = document.getElementById('count');
-  var pickerEl = document.getElementById('picker');
-  var chipsEl = document.getElementById('chips');
-  var startBtn = document.getElementById('startBtn');
-  var pickBtn = document.getElementById('pickBtn');
-  var dots = Array.prototype.slice.call(document.querySelectorAll('.dot'));
-
-  var chestIndex = 0, taps = 0, opened = 0, isOpen = false;
-  var transitioning = false, openedAt = 0;
-  var selected = [], selectedPos = [], bag = [], pickerOpen = true;
-  var POSITIONS = [['start','POCZĄTEK'],['middle','ŚRODEK'],['end','KONIEC']];
-
-  // ── phoneme picker ───────────────────────────────────────────
-  try { selected = JSON.parse(localStorage.getItem('sk_gloski') || '[]'); } catch(e){ selected = []; }
-  if (!(selected instanceof Array)) selected = [];
-  selected = selected.filter(function(k){ return PHONEMES[k]; });
-
-  try { selectedPos = JSON.parse(localStorage.getItem('sk_pozycje') || 'null'); } catch(e){ selectedPos = null; }
-  if (!(selectedPos instanceof Array)) selectedPos = null;
-  var POS_KEYS = POSITIONS.map(function(p){ return p[0]; });
-  if (selectedPos) selectedPos = selectedPos.filter(function(k){ return POS_KEYS.indexOf(k) >= 0; });
-  if (!selectedPos || !selectedPos.length) selectedPos = POS_KEYS.slice(); // default: everywhere
-
-  function refreshStart(){ startBtn.disabled = selected.length === 0 || selectedPos.length === 0; }
-
-  PHONEME_ORDER.forEach(function(key){
-    var b = document.createElement('button');
-    b.className = 'chip' + (selected.indexOf(key) >= 0 ? ' sel' : '');
-    b.textContent = key;
-    b.addEventListener('pointerdown', function(){
-      var i = selected.indexOf(key);
-      if (i >= 0) { selected.splice(i, 1); b.classList.remove('sel'); }
-      else { selected.push(key); b.classList.add('sel'); sndChip(); }
-      refreshStart();
-    });
-    chipsEl.appendChild(b);
-  });
-
-  var posChipsEl = document.getElementById('posChips');
-  POSITIONS.forEach(function(pos){
-    var b = document.createElement('button');
-    b.className = 'chip' + (selectedPos.indexOf(pos[0]) >= 0 ? ' sel' : '');
-    b.textContent = pos[1];
-    b.addEventListener('pointerdown', function(){
-      var i = selectedPos.indexOf(pos[0]);
-      if (i >= 0) { selectedPos.splice(i, 1); b.classList.remove('sel'); }
-      else { selectedPos.push(pos[0]); b.classList.add('sel'); sndChip(); }
-      refreshStart();
-    });
-    posChipsEl.appendChild(b);
-  });
-  refreshStart();
 
   function shuffle(a){
     for (var i = a.length - 1; i > 0; i--){
@@ -479,70 +626,8 @@
     }
     return a;
   }
-  // where the practised phoneme sits in the word: start / middle / end
-  function findMatch(word, key){
-    var pats = MATCHERS[key] || [key.toLowerCase()];
-    var lo = word.toLowerCase(), best = -1, len = 0;
-    for (var i = 0; i < pats.length; i++){
-      var idx = lo.indexOf(pats[i]);
-      if (idx >= 0 && (best < 0 || idx < best)) { best = idx; len = pats[i].length; }
-    }
-    return { idx: best, len: len };
-  }
-  function wordPos(word, key){
-    var m = findMatch(word, key);
-    if (m.idx < 0) return 'middle';
-    if (m.idx === 0) return 'start';
-    if (m.idx + m.len === word.length) return 'end';
-    return 'middle';
-  }
-  function buildBag(){
-    bag = [];
-    selected.forEach(function(k){
-      PHONEMES[k].forEach(function(we){
-        if (selectedPos.indexOf(wordPos(we[0], k)) >= 0) bag.push({ w: we[0], e: we[1], k: k });
-      });
-    });
-    // no words match this phoneme+position combo: fall back to all positions
-    if (!bag.length){
-      selected.forEach(function(k){
-        PHONEMES[k].forEach(function(we){ bag.push({ w: we[0], e: we[1], k: k }); });
-      });
-    }
-    shuffle(bag);
-  }
-  function nextPrize(){
-    if (!bag.length) buildBag();
-    return bag.pop();
-  }
 
-  startBtn.addEventListener('click', function(){
-    if (!selected.length) return;
-    try {
-      localStorage.setItem('sk_gloski', JSON.stringify(selected));
-      localStorage.setItem('sk_pozycje', JSON.stringify(selectedPos));
-    } catch(e){}
-    buildBag();
-    pickerEl.classList.remove('on');
-    pickerOpen = false;
-    ctx(); // user gesture: unlock audio
-    sndNext();
-  });
-  pickBtn.addEventListener('pointerdown', function(e){
-    e.stopPropagation();
-    pickerOpen = true;
-    pickerEl.classList.add('on');
-  });
-
-  // highlight the practised phoneme inside the word (uppercase display)
-  function wordHtml(word, key){
-    var m = findMatch(word, key);
-    var up = word.toUpperCase();
-    if (m.idx < 0) return up;
-    return up.slice(0, m.idx) + '<span class="hl">' + up.slice(m.idx, m.idx + m.len) + '</span>' + up.slice(m.idx + m.len);
-  }
-
-  // ── speech: the phone says the word out loud ─────────────────
+  // speech: the phone says the word out loud
   function say(word){
     try {
       if (!window.speechSynthesis) return;
@@ -553,24 +638,7 @@
     } catch(e){}
   }
 
-  // ── theme application ────────────────────────────────────────
-  function setFill(cls, col){
-    var els = document.querySelectorAll('.' + cls);
-    for (var i = 0; i < els.length; i++) els[i].setAttribute('fill', col);
-  }
-  function applyTheme(th){
-    document.body.style.setProperty('--bg', th.bg);
-    document.body.style.setProperty('--accent', th.accent);
-    setFill('c-body', th.body); setFill('c-inner', th.inner);
-    setFill('c-plank', th.plank); setFill('c-lid', th.lid);
-    setFill('c-lidin', th.lidin); setFill('c-trim', th.trim);
-    titleEl.textContent = th.name;
-    titleEl.style.animation = 'none';
-    void titleEl.offsetWidth;
-    titleEl.style.animation = '';
-  }
-
-  // ── sounds (Web Audio, no files) ─────────────────────────────
+  // sounds (Web Audio, no files)
   var AC = null;
   function ctx(){
     if (!AC) { var C = window.AudioContext || window.webkitAudioContext; if (C) AC = new C(); }
@@ -599,9 +667,12 @@
   }
   function sndNext(){ tone(400, 0.15, 'sine', 0.15, 0, 900); }
   function sndChip(){ tone(700, 0.1, 'sine', 0.15, 0, 1100); }
+  function sndScratch(){ tone(180 + Math.random()*120, 0.05, 'sawtooth', 0.05); }
   function buzz(p){ if (navigator.vibrate) try { navigator.vibrate(p); } catch(e){} }
 
-  // ── confetti / particle canvas ───────────────────────────────
+  function flash(){ flashEl.classList.remove('go'); void flashEl.offsetWidth; flashEl.classList.add('go'); }
+
+  // confetti / particle canvas
   var fx = document.getElementById('fx'), fc = fx.getContext('2d');
   var parts = [], running = false;
   function sizeFx(){ fx.width = innerWidth * devicePixelRatio; fx.height = innerHeight * devicePixelRatio; fc.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0); }
@@ -641,8 +712,194 @@
     }
     if (parts.length){ requestAnimationFrame(step); } else { running = false; fc.clearRect(0,0,innerWidth,innerHeight); }
   }
+  function celebrate(x, y){
+    flash();
+    spawnConfetti(x, y, 90, 14);
+    setTimeout(function(){ spawnConfetti(x - 80, y, 40, 10); spawnConfetti(x + 80, y, 40, 10); }, 180);
+  }
+  function centerOf(el){ var r = el.getBoundingClientRect(); return { x: r.left + r.width/2, y: r.top + r.height/2 }; }
 
-  // ── ambient sparkles around the chest ────────────────────────
+  // ══════════════════════════════════════════════════════════════
+  //  SCREEN MANAGEMENT
+  // ══════════════════════════════════════════════════════════════
+  var screens = {
+    hub: document.getElementById('hub'),
+    chest: document.getElementById('chestGame'),
+    puzzle: document.getElementById('puzzleGame'),
+    scratch: document.getElementById('scratchGame')
+  };
+  var current = 'hub';
+  function show(name){
+    for (var k in screens){ screens[k].classList.toggle('on', k === name); }
+    current = name;
+  }
+  function goHome(){
+    try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch(e){}
+    clearTimeout(openChest._t);
+    show('hub');
+  }
+  var homeBtns = document.querySelectorAll('.homeBtn');
+  for (var hb = 0; hb < homeBtns.length; hb++){
+    homeBtns[hb].addEventListener('pointerdown', function(e){ e.preventDefault(); e.stopPropagation(); goHome(); });
+  }
+
+  document.getElementById('cardChest').addEventListener('pointerdown', function(e){ e.preventDefault(); ctx(); openChestGame(); });
+  document.getElementById('cardPuzzle').addEventListener('pointerdown', function(e){ e.preventDefault(); ctx(); openPuzzleGame(); });
+  document.getElementById('cardScratch').addEventListener('pointerdown', function(e){ e.preventDefault(); ctx(); openScratchGame(); });
+
+  // ══════════════════════════════════════════════════════════════
+  //  CHEST GAME
+  // ══════════════════════════════════════════════════════════════
+  var chestBtn = document.getElementById('chestBtn');
+  var titleEl = document.getElementById('title');
+  var hintEl = document.getElementById('hint');
+  var prizeEl = document.getElementById('prize');
+  var pEmojiEl = document.getElementById('pEmoji');
+  var pWordEl = document.getElementById('pWord');
+  var bravoEl = document.getElementById('bravo');
+  var raysEl = document.getElementById('rays');
+  var countEl = document.getElementById('count');
+  var pickerEl = document.getElementById('picker');
+  var chipsEl = document.getElementById('chips');
+  var startBtn = document.getElementById('startBtn');
+  var pickBtn = document.getElementById('pickBtn');
+  var dots = Array.prototype.slice.call(document.querySelectorAll('#dots .dot'));
+
+  var chestIndex = 0, taps = 0, opened = 0, isOpen = false;
+  var transitioning = false, openedAt = 0;
+  var selected = [], selectedPos = [], bag = [], pickerOpen = false;
+  var POSITIONS = [['start','POCZĄTEK'],['middle','ŚRODEK'],['end','KONIEC']];
+
+  try { selected = JSON.parse(localStorage.getItem('sk_gloski') || '[]'); } catch(e){ selected = []; }
+  if (!(selected instanceof Array)) selected = [];
+  selected = selected.filter(function(k){ return PHONEMES[k]; });
+
+  try { selectedPos = JSON.parse(localStorage.getItem('sk_pozycje') || 'null'); } catch(e){ selectedPos = null; }
+  if (!(selectedPos instanceof Array)) selectedPos = null;
+  var POS_KEYS = POSITIONS.map(function(p){ return p[0]; });
+  if (selectedPos) selectedPos = selectedPos.filter(function(k){ return POS_KEYS.indexOf(k) >= 0; });
+  if (!selectedPos || !selectedPos.length) selectedPos = POS_KEYS.slice();
+
+  function refreshStart(){ startBtn.disabled = selected.length === 0 || selectedPos.length === 0; }
+
+  PHONEME_ORDER.forEach(function(key){
+    var b = document.createElement('button');
+    b.className = 'chip' + (selected.indexOf(key) >= 0 ? ' sel' : '');
+    b.textContent = key;
+    b.addEventListener('pointerdown', function(){
+      var i = selected.indexOf(key);
+      if (i >= 0) { selected.splice(i, 1); b.classList.remove('sel'); }
+      else { selected.push(key); b.classList.add('sel'); sndChip(); }
+      refreshStart();
+    });
+    chipsEl.appendChild(b);
+  });
+
+  var posChipsEl = document.getElementById('posChips');
+  POSITIONS.forEach(function(pos){
+    var b = document.createElement('button');
+    b.className = 'chip' + (selectedPos.indexOf(pos[0]) >= 0 ? ' sel' : '');
+    b.textContent = pos[1];
+    b.addEventListener('pointerdown', function(){
+      var i = selectedPos.indexOf(pos[0]);
+      if (i >= 0) { selectedPos.splice(i, 1); b.classList.remove('sel'); }
+      else { selectedPos.push(pos[0]); b.classList.add('sel'); sndChip(); }
+      refreshStart();
+    });
+    posChipsEl.appendChild(b);
+  });
+  refreshStart();
+
+  function findMatch(word, key){
+    var pats = MATCHERS[key] || [key.toLowerCase()];
+    var lo = word.toLowerCase(), best = -1, len = 0;
+    for (var i = 0; i < pats.length; i++){
+      var idx = lo.indexOf(pats[i]);
+      if (idx >= 0 && (best < 0 || idx < best)) { best = idx; len = pats[i].length; }
+    }
+    return { idx: best, len: len };
+  }
+  function wordPos(word, key){
+    var m = findMatch(word, key);
+    if (m.idx < 0) return 'middle';
+    if (m.idx === 0) return 'start';
+    if (m.idx + m.len === word.length) return 'end';
+    return 'middle';
+  }
+  function buildBag(){
+    bag = [];
+    selected.forEach(function(k){
+      PHONEMES[k].forEach(function(we){
+        if (selectedPos.indexOf(wordPos(we[0], k)) >= 0) bag.push({ w: we[0], e: we[1], k: k });
+      });
+    });
+    if (!bag.length){
+      selected.forEach(function(k){
+        PHONEMES[k].forEach(function(we){ bag.push({ w: we[0], e: we[1], k: k }); });
+      });
+    }
+    shuffle(bag);
+  }
+  function nextPrize(){
+    if (!bag.length) buildBag();
+    return bag.pop();
+  }
+
+  startBtn.addEventListener('click', function(){
+    if (!selected.length) return;
+    try {
+      localStorage.setItem('sk_gloski', JSON.stringify(selected));
+      localStorage.setItem('sk_pozycje', JSON.stringify(selectedPos));
+    } catch(e){}
+    buildBag();
+    pickerEl.classList.remove('on');
+    pickerOpen = false;
+    ctx();
+    sndNext();
+  });
+  pickBtn.addEventListener('pointerdown', function(e){
+    e.stopPropagation();
+    pickerOpen = true;
+    pickerEl.classList.add('on');
+  });
+
+  function openChestGame(){
+    show('chest');
+    applyTheme(THEMES[chestIndex]);
+    if (!selected.length){
+      pickerOpen = true;
+      pickerEl.classList.add('on');
+    } else {
+      pickerOpen = false;
+      pickerEl.classList.remove('on');
+      if (!bag.length) buildBag();
+    }
+  }
+
+  function wordHtml(word, key){
+    var m = findMatch(word, key);
+    var up = word.toUpperCase();
+    if (m.idx < 0) return up;
+    return up.slice(0, m.idx) + '<span class="hl">' + up.slice(m.idx, m.idx + m.len) + '</span>' + up.slice(m.idx + m.len);
+  }
+
+  function setFill(cls, col){
+    var els = document.querySelectorAll('.' + cls);
+    for (var i = 0; i < els.length; i++) els[i].setAttribute('fill', col);
+  }
+  function applyTheme(th){
+    document.getElementById('chestGame').style.setProperty('--bg', th.bg);
+    document.getElementById('chestGame').style.setProperty('--accent', th.accent);
+    setFill('c-body', th.body); setFill('c-inner', th.inner);
+    setFill('c-plank', th.plank); setFill('c-lid', th.lid);
+    setFill('c-lidin', th.lidin); setFill('c-trim', th.trim);
+    titleEl.textContent = th.name;
+    titleEl.style.animation = 'none';
+    void titleEl.offsetWidth;
+    titleEl.style.animation = '';
+  }
+
+  // ambient sparkles around the chest
   var stage = document.getElementById('stage');
   var AMB_POS = [[12,20],[85,15],[8,70],[90,65],[20,45],[78,42]];
   for (var ai = 0; ai < AMB_POS.length; ai++){
@@ -654,21 +911,14 @@
     stage.appendChild(s);
   }
 
-  function chestCenter(){
-    var r = chestBtn.getBoundingClientRect();
-    return { x: r.left + r.width/2, y: r.top + r.height/2 };
-  }
-
-  // ── game flow ────────────────────────────────────────────────
-  // Taps register on pointerdown with no cooldown, so mashing the chest
-  // never drops input; only the prize screen holds an 800 ms grace period
-  // so rapid taps can't skip past the reward.
+  // Taps register on pointerdown with no cooldown; only the prize screen
+  // holds an 800 ms grace period so rapid taps can't skip past the reward.
   function onTap(){
-    ctx(); // unlock audio on user gesture
+    ctx();
     if (pickerOpen || transitioning) return;
     if (isOpen){ if (Date.now() - openedAt > 800) nextChest(); return; }
     taps++;
-    var c = chestCenter();
+    var c = centerOf(chestBtn);
     chestBtn.classList.remove('shake1','shake2');
     void chestBtn.offsetWidth;
 
@@ -692,7 +942,7 @@
     buzz([60, 40, 120]);
 
     chestBtn.classList.add('opened', 'open');
-    flashEl.classList.remove('go'); void flashEl.offsetWidth; flashEl.classList.add('go');
+    flash();
     raysEl.classList.add('on');
 
     spawnConfetti(c.x, c.y - 30, 90, 14);
@@ -707,9 +957,8 @@
     setTimeout(function(){ say(prize.w); }, 650);
 
     openedAt = Date.now();
-    // auto-advance for little fingers that wander off
     clearTimeout(openChest._t);
-    openChest._t = setTimeout(function(){ if (isOpen) nextChest(); }, 9000);
+    openChest._t = setTimeout(function(){ if (isOpen && current === 'chest') nextChest(); }, 9000);
   }
 
   function nextChest(){
@@ -729,15 +978,313 @@
   }
 
   chestBtn.addEventListener('pointerdown', function(e){ e.preventDefault(); onTap(); });
-  // when the chest is open, tapping anywhere gives the next one
-  document.body.addEventListener('pointerdown', function(e){
+  screens.chest.addEventListener('pointerdown', function(e){
     if (pickerOpen) return;
-    if (isOpen && !chestBtn.contains(e.target) && Date.now() - openedAt > 800) nextChest();
+    if (isOpen && !chestBtn.contains(e.target) && !e.target.closest('.topbtn') && Date.now() - openedAt > 800) nextChest();
   });
   chestBtn.addEventListener('click', function(e){ e.preventDefault(); });
   document.addEventListener('dblclick', function(e){ e.preventDefault(); });
 
+  // ══════════════════════════════════════════════════════════════
+  //  PUZZLE GAME
+  // ══════════════════════════════════════════════════════════════
+  var pzBoard = document.getElementById('pzBoard');
+  var pzTarget = document.getElementById('pzTarget');
+  var pzTargetLabel = document.getElementById('pzTargetLabel');
+  var pzBravo = document.getElementById('pzBravo');
+  var pzHint = document.getElementById('pzHint');
+  var pz = { cols:2, rows:2, pic:null, order:[], cell:80, boardW:160, boardH:160, sel:-1, solved:false, solvedAt:0 };
+  var pzLastPic = -1;
+
+  try { var sz = JSON.parse(localStorage.getItem('sk_puzzle') || 'null'); if (sz && sz.c && sz.r){ pz.cols = sz.c; pz.rows = sz.r; } } catch(e){}
+
+  var szChips = Array.prototype.slice.call(document.querySelectorAll('.szchip'));
+  szChips.forEach(function(chip){
+    chip.addEventListener('pointerdown', function(e){
+      e.preventDefault(); e.stopPropagation();
+      pz.cols = parseInt(chip.getAttribute('data-c'), 10);
+      pz.rows = parseInt(chip.getAttribute('data-r'), 10);
+      try { localStorage.setItem('sk_puzzle', JSON.stringify({ c:pz.cols, r:pz.rows })); } catch(e2){}
+      markSizeChips();
+      sndChip();
+      newPuzzle();
+    });
+  });
+  function markSizeChips(){
+    szChips.forEach(function(chip){
+      var on = parseInt(chip.getAttribute('data-c'),10) === pz.cols && parseInt(chip.getAttribute('data-r'),10) === pz.rows;
+      chip.classList.toggle('sel', on);
+    });
+  }
+
+  function pzPickPic(){
+    var i;
+    do { i = (Math.random() * PICS.length) | 0; } while (PICS.length > 1 && i === pzLastPic);
+    pzLastPic = i;
+    return { w: PICS[i][0], e: PICS[i][1] };
+  }
+  function pzLayout(){
+    var maxW = Math.min(innerWidth * 0.9, 460);
+    var maxH = innerHeight * 0.52;
+    var cell = Math.min(maxW / pz.cols, maxH / pz.rows);
+    cell = Math.max(56, Math.floor(cell));
+    pz.cell = cell;
+    pz.boardW = cell * pz.cols;
+    pz.boardH = cell * pz.rows;
+    pzBoard.style.gridTemplateColumns = 'repeat(' + pz.cols + ',' + cell + 'px)';
+    pzBoard.style.gridTemplateRows = 'repeat(' + pz.rows + ',' + cell + 'px)';
+    var cells = pzBoard.children;
+    var emojiSize = Math.min(pz.boardW, pz.boardH) * 0.92;
+    for (var i = 0; i < cells.length; i++){
+      var inner = cells[i].firstChild;
+      inner.style.width = pz.boardW + 'px';
+      inner.style.height = pz.boardH + 'px';
+      inner.style.fontSize = emojiSize + 'px';
+    }
+    pzPaint();
+  }
+  function pzBuildDom(){
+    pzBoard.innerHTML = '';
+    var n = pz.cols * pz.rows;
+    for (var i = 0; i < n; i++){
+      var cell = document.createElement('div');
+      cell.className = 'pzCell';
+      cell.setAttribute('data-slot', i);
+      var inner = document.createElement('div');
+      inner.className = 'pzInner';
+      inner.textContent = pz.pic.e;
+      cell.appendChild(inner);
+      pzBoard.appendChild(cell);
+    }
+  }
+  function pzPaint(){
+    var cells = pzBoard.children;
+    for (var slot = 0; slot < cells.length; slot++){
+      var correct = pz.order[slot];
+      var r = Math.floor(correct / pz.cols), c = correct % pz.cols;
+      var inner = cells[slot].firstChild;
+      inner.textContent = pz.pic.e;
+      inner.style.transform = 'translate(' + (-c * pz.cell) + 'px,' + (-r * pz.cell) + 'px)';
+      cells[slot].classList.toggle('sel', slot === pz.sel);
+    }
+  }
+  function newPuzzle(){
+    pz.pic = pzPickPic();
+    var n = pz.cols * pz.rows;
+    var order = [];
+    for (var i = 0; i < n; i++) order.push(i);
+    do { shuffle(order); } while (isIdentity(order));
+    pz.order = order;
+    pz.sel = -1;
+    pz.solved = false;
+    pzBoard.classList.remove('solved');
+    pzBravo.classList.remove('show');
+    pzTarget.style.fontSize = 'clamp(30px,9vw,48px)';
+    pzTarget.textContent = pz.pic.e;
+    pzTargetLabel.textContent = 'Ułóż: ' + pz.pic.w.toUpperCase();
+    pzHint.textContent = 'Stukaj dwa kawałki, by je zamienić!';
+    pzBuildDom();
+    pzLayout();
+    sndNext();
+  }
+  function isIdentity(a){ for (var i = 0; i < a.length; i++) if (a[i] !== i) return false; return true; }
+
+  function pzTapSlot(slot){
+    if (pz.solved) return;
+    if (pz.sel < 0){
+      pz.sel = slot; pzPaint(); sndTap(1); buzz(20);
+    } else if (pz.sel === slot){
+      pz.sel = -1; pzPaint();
+    } else {
+      var t = pz.order[pz.sel]; pz.order[pz.sel] = pz.order[slot]; pz.order[slot] = t;
+      pz.sel = -1; sndChip(); buzz(30); pzPaint();
+      if (isIdentity(pz.order)) pzSolve();
+    }
+  }
+  function pzSolve(){
+    pz.solved = true; pz.solvedAt = Date.now();
+    pzBoard.classList.add('solved');
+    sndOpen(); buzz([60,40,120]);
+    var c = centerOf(pzBoard);
+    celebrate(c.x, c.y);
+    pzBravo.classList.remove('show'); void pzBravo.offsetWidth; pzBravo.classList.add('show');
+    pzHint.textContent = 'BRAWO! To ' + pz.pic.w.toUpperCase() + '! Stuknij, by grać dalej.';
+    setTimeout(function(){ say(pz.pic.w); }, 350);
+  }
+
+  pzBoard.addEventListener('pointerdown', function(e){
+    e.preventDefault();
+    ctx();
+    if (pz.solved){
+      if (Date.now() - pz.solvedAt > 600) newPuzzle();
+      return;
+    }
+    var cell = e.target.closest('.pzCell');
+    if (!cell) return;
+    pzTapSlot(parseInt(cell.getAttribute('data-slot'), 10));
+  });
+
+  function openPuzzleGame(){
+    show('puzzle');
+    markSizeChips();
+    newPuzzle();
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  //  SCRATCH GAME (zdrapka)
+  // ══════════════════════════════════════════════════════════════
+  var scCard = document.getElementById('scCard');
+  var scReveal = document.getElementById('scReveal');
+  var scEmoji = document.getElementById('scEmoji');
+  var scWord = document.getElementById('scWord');
+  var scCanvas = document.getElementById('scCanvas');
+  var scctx = scCanvas.getContext('2d');
+  var scBravo = document.getElementById('scBravo');
+  var scHint = document.getElementById('scHint');
+  var sc = { pic:null, size:300, scratching:false, done:false, doneAt:0, lastSample:0 };
+  var scLastPic = -1;
+
+  function scPickPic(){
+    var i;
+    do { i = (Math.random() * PICS.length) | 0; } while (PICS.length > 1 && i === scLastPic);
+    scLastPic = i;
+    return { w: PICS[i][0], e: PICS[i][1] };
+  }
+  function scDrawCover(){
+    var w = scCanvas.width, h = scCanvas.height, dpr = devicePixelRatio;
+    scctx.setTransform(1, 0, 0, 1, 0, 0);
+    scctx.globalCompositeOperation = 'source-over';
+    scctx.clearRect(0, 0, w, h);
+    var g = scctx.createLinearGradient(0, 0, w, h);
+    g.addColorStop(0, '#cfd8dc'); g.addColorStop(0.35, '#eceff1');
+    g.addColorStop(0.5, '#b0bec5'); g.addColorStop(0.65, '#eceff1'); g.addColorStop(1, '#90a4ae');
+    scctx.fillStyle = g;
+    scctx.fillRect(0, 0, w, h);
+    // sparkle speckles
+    scctx.fillStyle = 'rgba(255,255,255,0.6)';
+    for (var i = 0; i < 60; i++){
+      scctx.beginPath();
+      scctx.arc(Math.random()*w, Math.random()*h, (Math.random()*2+0.5)*dpr, 0, 7);
+      scctx.fill();
+    }
+    scctx.fillStyle = 'rgba(120,90,20,0.75)';
+    scctx.font = 'bold ' + (26*dpr) + 'px "Baloo 2","Comic Sans MS",sans-serif';
+    scctx.textAlign = 'center'; scctx.textBaseline = 'middle';
+    scctx.fillText('ZDRAP MNIE!', w/2, h/2);
+    scctx.font = (34*dpr) + 'px sans-serif';
+    scctx.fillText('✨🪙✨', w/2, h/2 + 40*dpr);
+  }
+  function scSetup(){
+    var size = Math.min(innerWidth * 0.82, innerHeight * 0.5, 360);
+    size = Math.floor(size);
+    sc.size = size;
+    scCard.style.width = size + 'px';
+    scCard.style.height = size + 'px';
+    scEmoji.style.fontSize = (size * 0.5) + 'px';
+    var dpr = devicePixelRatio;
+    scCanvas.width = size * dpr;
+    scCanvas.height = size * dpr;
+    scCanvas.style.width = size + 'px';
+    scCanvas.style.height = size + 'px';
+    scDrawCover();
+  }
+  function scErase(clientX, clientY){
+    var r = scCanvas.getBoundingClientRect();
+    var dpr = devicePixelRatio;
+    var x = (clientX - r.left) * (scCanvas.width / r.width);
+    var y = (clientY - r.top) * (scCanvas.height / r.height);
+    scctx.globalCompositeOperation = 'destination-out';
+    scctx.beginPath();
+    scctx.arc(x, y, sc.size * 0.13 * dpr, 0, 7);
+    scctx.fill();
+  }
+  function scFraction(){
+    var w = scCanvas.width, h = scCanvas.height;
+    var data;
+    try { data = scctx.getImageData(0, 0, w, h).data; } catch(e){ return 0; }
+    var clear = 0, total = 0, stepX = 6, rowStep = 6 * w * 4;
+    for (var p = 3; p < data.length; p += rowStep){
+      for (var q = p; q < p + w*4 && q < data.length; q += stepX*4){
+        total++; if (data[q] < 128) clear++;
+      }
+    }
+    return total ? clear / total : 0;
+  }
+  function scReset(pic){
+    sc.pic = pic;
+    sc.scratching = false; sc.done = false; sc.lastSample = 0;
+    scEmoji.textContent = pic.e;
+    scWord.textContent = pic.w.toUpperCase();
+    scReveal.classList.remove('pop');
+    scBravo.classList.remove('show');
+    // show the fresh foil instantly (no fade-in) so the picture underneath
+    // never peeks through while the new card loads; reveal still fades out.
+    scCanvas.style.transition = 'none';
+    scCanvas.style.opacity = '1';
+    scCanvas.style.pointerEvents = 'auto';
+    scHint.textContent = 'Zdrapuj palcem obrazek!';
+    scSetup();
+    void scCanvas.offsetWidth;
+    scCanvas.style.transition = '';
+  }
+  function scRevealDone(){
+    if (sc.done) return;
+    sc.done = true; sc.doneAt = Date.now();
+    scCanvas.style.opacity = '0';
+    scCanvas.style.pointerEvents = 'none';
+    scReveal.classList.remove('pop'); void scReveal.offsetWidth; scReveal.classList.add('pop');
+    sndOpen(); buzz([60,40,120]);
+    var c = centerOf(scCard);
+    celebrate(c.x, c.y);
+    scBravo.classList.remove('show'); void scBravo.offsetWidth; scBravo.classList.add('show');
+    scHint.textContent = 'BRAWO! To ' + sc.pic.w.toUpperCase() + '! Stuknij, by grać dalej.';
+    setTimeout(function(){ say(sc.pic.w); }, 300);
+  }
+  function scMove(clientX, clientY){
+    if (!sc.scratching || sc.done) return;
+    scErase(clientX, clientY);
+    var now = Date.now();
+    if (now - sc.lastSample > 220){
+      sc.lastSample = now;
+      sndScratch();
+      if (scFraction() > 0.5) scRevealDone();
+    }
+  }
+  scCanvas.addEventListener('pointerdown', function(e){
+    e.preventDefault(); ctx();
+    if (sc.done) return;
+    sc.scratching = true;
+    try { scCanvas.setPointerCapture(e.pointerId); } catch(err){}
+    scErase(e.clientX, e.clientY);
+    buzz(15);
+  });
+  scCanvas.addEventListener('pointermove', function(e){ e.preventDefault(); scMove(e.clientX, e.clientY); });
+  function scEnd(){
+    if (sc.scratching && !sc.done && scFraction() > 0.45) scRevealDone();
+    sc.scratching = false;
+  }
+  scCanvas.addEventListener('pointerup', function(e){ e.preventDefault(); scEnd(); });
+  scCanvas.addEventListener('pointercancel', function(){ scEnd(); });
+  scCard.addEventListener('pointerdown', function(e){
+    if (sc.done && Date.now() - sc.doneAt > 600){ ctx(); scReset(scPickPic()); }
+  });
+
+  function openScratchGame(){
+    show('scratch');
+    scReset(scPickPic());
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  //  RESIZE + INIT
+  // ══════════════════════════════════════════════════════════════
+  addEventListener('resize', function(){
+    if (current === 'puzzle' && pz.pic) pzLayout();
+    if (current === 'scratch' && sc.pic && !sc.done) scSetup();
+  });
+
   applyTheme(THEMES[0]);
+  markSizeChips();
+  show('hub');
 })();
 </script>
 </body>
