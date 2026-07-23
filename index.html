@@ -1973,17 +1973,22 @@
   var PIANO_NOTES = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25];
   var PIANO_COLORS = ['#ef5350','#ff7043','#ffca28','#66bb6a','#26c6da','#42a5f5','#7e57c2','#ec407a'];
   var PIANO_EMOJI  = ['🐤','🐸','🐰','🐱','🐶','🐵','🐷','🦄'];
-  var pianoBuilt = false, pianoDown = false;
-  function pianoNote(el){
+  var pianoBuilt = false, pianoDown = false, pianoLast = null;
+  // fire a key's note + effect; sparks land at the finger (x,y), not the key centre
+  function pianoNote(el, x, y){
     if (!el) return;
     var i = parseInt(el.getAttribute('data-i'), 10);
+    if (isNaN(i)) return;
     tone(PIANO_NOTES[i], 0.45, 'triangle', 0.22);
     tone(PIANO_NOTES[i] * 2, 0.28, 'sine', 0.08, 0.01);
     buzz(18);
     el.classList.remove('down'); void el.offsetWidth; el.classList.add('down');
-    var c = centerOf(el); spawnSparks(c.x, c.y, 8);
+    if (x == null){ var c = centerOf(el); x = c.x; y = c.y; }
+    spawnSparks(x, y, 12); spawnConfetti(x, y, 10, 6);
     clearTimeout(el._t); el._t = setTimeout(function(){ el.classList.remove('down'); }, 140);
   }
+  // which key sits under this screen point (works during a touch-drag, unlike pointerover)
+  function pianoKeyAt(x, y){ var el = document.elementFromPoint(x, y); return el ? el.closest('.pKey') : null; }
   function buildPiano(){
     if (pianoBuilt) return;
     pianoBuilt = true;
@@ -1994,20 +1999,24 @@
       k.textContent = PIANO_EMOJI[i];
       pianoKeys.appendChild(k);
     }
-    // press + slide (glissando): a note fires on down and when a pressed finger enters a new key
+    // press + slide (glissando). Touch captures the pointer to the first key, so
+    // pointerover never fires for the rest — track the finger with elementFromPoint.
     pianoKeys.addEventListener('pointerdown', function(e){
       e.preventDefault(); ctx(); pianoDown = true;
-      pianoNote(e.target.closest('.pKey'));
+      try { pianoKeys.setPointerCapture(e.pointerId); } catch(err){}
+      pianoLast = e.target.closest('.pKey');
+      pianoNote(pianoLast, e.clientX, e.clientY);
     });
-    pianoKeys.addEventListener('pointerover', function(e){
+    pianoKeys.addEventListener('pointermove', function(e){
       if (!pianoDown) return;
-      pianoNote(e.target.closest('.pKey'));
+      var k = pianoKeyAt(e.clientX, e.clientY);
+      if (k && k !== pianoLast){ pianoLast = k; pianoNote(k, e.clientX, e.clientY); }
     });
-    var releaseP = function(){ pianoDown = false; };
-    addEventListener('pointerup', releaseP);
-    addEventListener('pointercancel', releaseP);
+    var releaseP = function(){ pianoDown = false; pianoLast = null; };
+    pianoKeys.addEventListener('pointerup', releaseP);
+    pianoKeys.addEventListener('pointercancel', releaseP);
   }
-  function openPianoGame(){ buildPiano(); pianoDown = false; show('piano'); }
+  function openPianoGame(){ buildPiano(); pianoDown = false; pianoLast = null; show('piano'); }
 
   // ══════════════════════════════════════════════════════════════
   //  MALOWANIE PALCEM (finger paint on a canvas)

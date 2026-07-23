@@ -40,7 +40,9 @@ Mini-games:
   solve/advance flow (600 ms grace).
 - **PIANINO** (`#pianoGame`) — free-play animal piano. Eight rainbow keys (C-major octave, an
   animal emoji on each) play a `tone()` note on press; a pressed finger sliding across keys
-  glissandos (`pointerover` while `pianoDown`). No win state; keys are built once (`pianoBuilt`).
+  glissandos — the finger is tracked with `document.elementFromPoint` on `pointermove` (touch
+  captures the pointer to the first key, so `pointerover` can't be used). Sparks/confetti spawn
+  at the finger, not the key centre. No win state; keys are built once (`pianoBuilt`).
 - **MALOWANIE** (`#paintGame`) — finger painting. Drag on `#paintCanvas` to draw thick round
   strokes; a palette of color swatches picks the brush, 🌈 gives a hue-cycling rainbow brush,
   🧽 clears. Canvas uses `devicePixelRatio` scaling and `touch-action:none`; `paintSize()`
@@ -146,8 +148,10 @@ After every edit:
   the filter to reveal the colours; mirrors CO SŁYSZYSZ?'s single-handler solve/advance. Count
   persists (`sk_shadow`).
 - **Pianino**: `buildPiano()` (once) makes 8 `.pKey`s from `PIANO_NOTES`/`PIANO_COLORS`/
-  `PIANO_EMOJI`; `pianoNote()` plays a `tone()` + sparks. `pointerover` while `pianoDown`
-  glissandos across keys. No state persisted, no win.
+  `PIANO_EMOJI`; `pianoNote(el,x,y)` plays a `tone()` + spawns sparks/confetti at `(x,y)`.
+  The container captures the pointer on `pointerdown`; `pointermove` resolves the key under the
+  finger via `pianoKeyAt()` (`elementFromPoint`) and retriggers when it changes (`pianoLast`).
+  No state persisted, no win.
 - **Malowanie**: `paint` state; canvas drawn with round `lineCap`/`lineJoin` strokes. `paintSize()`
   fits the backing store to the CSS box at `devicePixelRatio`, snapshotting + redrawing so a
   resize doesn't wipe the picture. 🌈 sets `paint.rainbow` (hue cycles per stroke segment); 🧽
