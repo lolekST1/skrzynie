@@ -108,17 +108,24 @@ After every edit:
   recomputes on resize. Grid size persists (`sk_memory` = `{c,r}`).
 - **Co słyszysz?**: `lis` state; `newListen()` renders `lis.count` tiles, one is `lis.target`.
   One `#lisArea` handler routes 🔊-repeat / advance-after-solve / tile-tap. Count persists
-  (`sk_listen`).
+  (`sk_listen`). If TTS doesn't work (`speechWorks===false`), `lisApplyFallback()` reveals the
+  target word (`#lisWord`) with a "Rodzicu, przeczytaj" hint so a parent can voice it.
 - **Bąbelki**: `bubbles[]` of DOM nodes moved by a single `bubStep` rAF loop that returns
   (stops) when `current !== 'bubble'`; `openBubbleGame()` clears + restarts it. No win state.
 - **Speech on iOS/iPad**: iOS ignores `speechSynthesis.speak()` unless first primed *inside* a
   user gesture — every prize speaks from a timer, so a document-level `pointerdown` capture
-  listener calls `primeSpeech()` (a 0-volume utterance) once. `loadVoices()`/`onvoiceschanged`
-  pick a `pl-*` voice when present. (If iPad is still silent: the side/Control-Center **mute**
-  switch also silences Web Speech + Web Audio in Safari; the Polish "Zosia" voice may need
-  downloading in iOS Settings.)
+  listener calls `primeSpeech()` once. `say()` uses **default** rate/pitch and **no explicit
+  `u.voice`** (both silence some iOS builds; `lang='pl-PL'` still selects Zosia); utterances are
+  kept referenced (`retain()`, anti-GC) and `speakUnblocked()` **closes the `AudioContext`** for
+  the word's duration (a running WebAudio context otherwise starves speech — the utterance never
+  even fires `onstart`). `ctx()` recreates the context afterwards. Some iPads still never start
+  speech (Safari limitation) — `speechWorks` (tri-state, persisted as `sk_tts`) detects this via
+  `onstart`/timeout and drives the visible word fallback. The 🔔/🗣️ **sound self-test** in the
+  hub footer lets a parent tell mute-vs-no-voice-vs-engine-dead apart. (Also: Control-Center
+  **mute** silences audio; the Polish "Zosia" voice may need downloading in iOS Settings.)
 - Selections persist in `localStorage`: `sk_gloski` (phonemes), `sk_pozycje` (positions),
-  `sk_puzzle` (puzzle grid size), `sk_memory` (memory grid size), `sk_listen` (choice count).
+  `sk_puzzle` (puzzle grid size), `sk_memory` (memory grid size), `sk_listen` (choice count),
+  `sk_tts` (`1`/`0` — whether speech synthesis works on this device).
 - Input model: taps count on `pointerdown` with **no cooldown** (a 3-year-old mashes); only
   post-win screens have a grace period (chest 800 ms; puzzle/scratch 600 ms) so mashing can't
   skip the reward, plus a 350 ms `transitioning` guard during chest theme swap. Don't
