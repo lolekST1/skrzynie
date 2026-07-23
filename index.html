@@ -397,6 +397,12 @@
     box-shadow: 0 8px 0 rgba(0,0,0,0.16); transition: transform 0.12s;
   }
   .lisTile:active { transform: translateY(4px); }
+  #lisWord {
+    display:none; font-size: clamp(30px, 9vw, 48px); font-weight:800; letter-spacing:2px;
+    color:#fff; text-shadow:0 3px 0 rgba(0,0,0,0.22);
+    background:rgba(0,0,0,0.24); border-radius:999px; padding:6px 26px; white-space:nowrap;
+  }
+  #lisWord.on { display:block; animation: chippop 0.3s cubic-bezier(.2,2.2,.4,1); }
   .lisTile.wrong { animation: wrongshake 0.4s; }
   .lisTile.right { animation: rightpop 0.55s cubic-bezier(.2,1.8,.4,1); }
   .lisTile.dim { opacity:0.35; }
@@ -565,6 +571,7 @@
     <div class="gtitle">👂 CO SŁYSZYSZ?</div>
     <div id="lisArea">
       <button id="lisSpeakBtn" aria-label="Powtórz">🔊 Powtórz</button>
+      <div id="lisWord"></div>
       <div id="lisChoices"></div>
     </div>
     <div id="lisBravo" class="bravo">BRAWO! 🎉</div>
@@ -812,6 +819,16 @@
   // true while a word is being spoken — game sounds step aside so they don't
   // steal the audio route back from speech (see speakUnblocked / ctx / tone).
   var ttsActive = false;
+  // tri-state: null = unknown, true = TTS confirmed working, false = confirmed
+  // broken (e.g. Safari on some iPads never starts speech). Drives the visual
+  // "parent, read this" fallback in CO SŁYSZYSZ?. Persisted so we remember.
+  var speechWorks = null;
+  try { var _tw = localStorage.getItem('sk_tts'); if (_tw === '1') speechWorks = true; else if (_tw === '0') speechWorks = false; } catch(e){}
+  function setSpeechWorks(ok){
+    if (speechWorks === ok) return;
+    speechWorks = ok;
+    try { localStorage.setItem('sk_tts', ok ? '1' : '0'); } catch(e){}
+  }
 
   function makeUtter(word){
     var u = new SpeechSynthesisUtterance(word);
@@ -829,7 +846,8 @@
   function speakUnblocked(u){
     var restored = false;
     function restore(){ if (restored) return; restored = true; ttsActive = false; }
-    var origEnd = u.onend, origErr = u.onerror;
+    var origStart = u.onstart, origEnd = u.onend, origErr = u.onerror;
+    u.onstart = function(ev){ setSpeechWorks(true); if (origStart) origStart.call(u, ev); };
     u.onend = function(ev){ restore(); if (origEnd) origEnd.call(u, ev); };
     u.onerror = function(ev){ restore(); if (origErr) origErr.call(u, ev); };
     ttsActive = true;
@@ -851,11 +869,11 @@
   function probeSpeech(statusEl){
     if (!window.speechSynthesis){ statusEl.textContent = 'Ta przeglądarka w ogóle nie ma czytania mowy'; return; }
     var u = makeUtter('kotek'); var reacted = false;
-    u.onstart = function(){ reacted = true; statusEl.textContent = '▶ mowa RUSZYŁA! Słyszysz „kotek"? (jeśli tak — gra będzie czytać słówka)'; };
+    u.onstart = function(){ reacted = true; setSpeechWorks(true); statusEl.textContent = '▶ mowa RUSZYŁA! Słyszysz „kotek"? (jeśli tak — gra będzie czytać słówka)'; };
     u.onend   = function(){ if (!reacted){ reacted = true; statusEl.textContent = '✓ mowa zakończona'; } };
-    u.onerror = function(ev){ reacted = true; statusEl.textContent = '✗ błąd mowy: ' + (ev && ev.error ? ev.error : '?') + ' — napisz mi to'; };
+    u.onerror = function(ev){ reacted = true; setSpeechWorks(false); statusEl.textContent = '✗ mowa nie działa (' + (ev && ev.error ? ev.error : '?') + ') — włączam napisy w grze „Co słyszysz?".'; };
     speakUnblocked(u);
-    setTimeout(function(){ if (!reacted) statusEl.textContent = '⚠ mowa nie startuje mimo obecnej Zosi — to ograniczenie Safari na tym iPadzie. Napisz mi, przełączę grę na duży napis zamiast czytania.'; }, 1900);
+    setTimeout(function(){ if (!reacted){ setSpeechWorks(false); statusEl.textContent = '⚠ mowa nie startuje na tym iPadzie — nic nie szkodzi: w „Co słyszysz?" pojawi się napis do przeczytania, reszta gier i tak pokazuje słowa.'; } }, 1900);
   }
   // human-readable state of speech synthesis, for the on-screen sound test
   function speechInfo(){
@@ -1630,7 +1648,20 @@
   var lisBravo = document.getElementById('lisBravo');
   var lisHint = document.getElementById('lisHint');
   var lisArea = document.getElementById('lisArea');
+  var lisWord = document.getElementById('lisWord');
   var lis = { count:2, target:null, solved:false, solvedAt:0, lock:false };
+  // show/hide the parent-read word depending on whether TTS works on this device
+  function lisApplyFallback(){
+    if (lis.solved) return;
+    if (speechWorks === false){
+      lisWord.textContent = lis.target ? lis.target.w.toUpperCase() : '';
+      lisWord.classList.add('on');
+      lisHint.textContent = '🔊 Rodzicu, przeczytaj słowo dziecku';
+    } else {
+      lisWord.classList.remove('on');
+      lisHint.textContent = 'Posłuchaj i wskaż właściwy obrazek!';
+    }
+  }
 
   try { var ln = parseInt(localStorage.getItem('sk_listen') || '0', 10); if (ln >= 2 && ln <= 4) lis.count = ln; } catch(e){}
 
@@ -1651,15 +1682,22 @@
     var pics = randomPics(lis.count);
     lis.target = pics[(Math.random() * pics.length) | 0];
     lisBravo.classList.remove('show');
-    lisHint.textContent = 'Posłuchaj i wskaż właściwy obrazek!';
     lisChoices.innerHTML = '';
     pics.forEach(function(p){
       var t = document.createElement('div');
       t.className = 'lisTile'; t.textContent = p.e; t.setAttribute('data-w', p.w);
       lisChoices.appendChild(t);
     });
+    lisApplyFallback();
     clearTimeout(newListen._t);
     newListen._t = setTimeout(function(){ if (current === 'listen') say(lis.target.w); }, 450);
+    // if speech never starts on this device, auto-reveal the word for the parent
+    if (speechWorks !== true){
+      clearTimeout(newListen._chk);
+      newListen._chk = setTimeout(function(){
+        if (current === 'listen' && !lis.solved && speechWorks !== true){ setSpeechWorks(false); lisApplyFallback(); }
+      }, 1700);
+    }
   }
   function lisTap(tile){
     if (lis.solved || lis.lock) return;
