@@ -333,6 +333,20 @@
   #cardListen { background: linear-gradient(135deg,#29b6f6,#43a047); }
   #cardBubble { background: linear-gradient(135deg,#26c6da,#5c6bc0); }
 
+  /* discreet sound self-test for the parent (hub footer) */
+  #sndTest {
+    display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:center;
+    width:min(90vw,440px); margin:16px 0 6px; padding-bottom:4vh;
+  }
+  .tbtn {
+    border:none; border-radius:999px; padding:8px 15px;
+    background:rgba(255,255,255,0.2); color:#fff; font-family:inherit;
+    font-weight:800; font-size:15px; cursor:pointer;
+    box-shadow: inset 0 -3px 0 rgba(0,0,0,0.12);
+  }
+  .tbtn:active { transform: translateY(2px); }
+  #tStat { color:rgba(255,255,255,0.9); font-size:13px; font-weight:700; text-align:center; flex-basis:100%; }
+
   /* ══════════════ PARY (memory) ══════════════ */
   #memArea { flex:1; display:flex; align-items:center; justify-content:center; width:100%; }
   #memBoard {
@@ -438,6 +452,11 @@
         <span class="ic">🫧</span>
         <span class="txt"><span class="lab">BĄBELKI</span><span class="desc">Łap i przebijaj bąbelki</span></span>
       </button>
+    </div>
+    <div id="sndTest">
+      <button id="tSound" class="tbtn">🔔 dźwięk</button>
+      <button id="tWord" class="tbtn">🗣️ słowo</button>
+      <span id="tStat">test dźwięku dla rodzica</span>
     </div>
   </div>
 
@@ -785,21 +804,39 @@
     if (speechPrimed || !window.speechSynthesis) return;
     speechPrimed = true;
     try {
-      var u = new SpeechSynthesisUtterance(' ');
-      u.lang = 'pl-PL'; u.volume = 0;
+      loadVoices();
+      // iOS unlocks the engine more reliably on a real (near-silent) word than
+      // on an empty/space utterance, so speak a tiny word at very low volume.
+      var u = new SpeechSynthesisUtterance('ok');
+      u.lang = 'pl-PL'; u.volume = 0.02; u.rate = 1.2;
       if (plVoice) u.voice = plVoice;
       speechSynthesis.speak(u);
+      speechSynthesis.resume();
     } catch(e){}
   }
   function say(word){
     try {
       if (!window.speechSynthesis) return;
-      speechSynthesis.cancel();
+      if (!plVoice) loadVoices();
+      // Only cancel a genuinely in-flight utterance — calling cancel() right
+      // before speak() on iOS can swallow the new one.
+      if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
       var u = new SpeechSynthesisUtterance(word);
       u.lang = 'pl-PL'; u.rate = 0.8; u.pitch = 1.1;
       if (plVoice) u.voice = plVoice;
       speechSynthesis.speak(u);
+      speechSynthesis.resume(); // iOS sometimes leaves the queue paused
     } catch(e){}
+  }
+  // human-readable state of speech synthesis, for the on-screen sound test
+  function speechInfo(){
+    if (!window.speechSynthesis) return 'iPad nie ma czytania mowy w tej przeglądarce';
+    var vs = [];
+    try { vs = speechSynthesis.getVoices(); } catch(e){}
+    var pl = null;
+    for (var i = 0; i < vs.length; i++){ if (/^pl(\b|[-_])/i.test(vs[i].lang)){ pl = vs[i]; break; } }
+    if (!vs.length) return 'głosy jeszcze się wczytują… stuknij ponownie';
+    return 'głosy: ' + vs.length + ' · polski: ' + (pl ? ('TAK — ' + pl.name) : 'BRAK (dograj w Ustawieniach)');
   }
 
   // sounds (Web Audio, no files)
@@ -1695,6 +1732,24 @@
 
   // unlock audio + speech on the very first user gesture (needed on iOS/iPad)
   document.addEventListener('pointerdown', function(){ ctx(); primeSpeech(); }, true);
+
+  // ── sound self-test (hub footer) — lets a parent diagnose iPad silence ──
+  var tStat = document.getElementById('tStat');
+  document.getElementById('tSound').addEventListener('pointerdown', function(e){
+    e.preventDefault(); e.stopPropagation(); ctx();
+    tone(660, 0.22, 'triangle', 0.28); tone(990, 0.28, 'triangle', 0.22, 0.1); buzz(30);
+    tStat.textContent = 'Słyszysz melodię? Jeśli nie — iPad jest wyciszony.';
+  });
+  document.getElementById('tWord').addEventListener('pointerdown', function(e){
+    e.preventDefault(); e.stopPropagation(); ctx();
+    primeSpeech(); loadVoices(); say('kotek');
+    tStat.textContent = speechInfo();
+  });
+  if (window.speechSynthesis){
+    var _voicesChanged = function(){ loadVoices(); if (tStat && current === 'hub') tStat.textContent = speechInfo(); };
+    try { speechSynthesis.addEventListener('voiceschanged', _voicesChanged); } catch(e){}
+    setTimeout(function(){ if (tStat) tStat.textContent = speechInfo(); }, 900);
+  }
 
   applyTheme(THEMES[0]);
   markSizeChips();
