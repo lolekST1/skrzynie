@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project overview
 
 **Gierki** — a single-file HTML5 mini-game hub in Polish for a small child (~3 y.o.). The
-opening screen (`#hub`) is a menu of nine cards leading to nine mini-games; a 🏠 button in
+opening screen (`#hub`) is a menu of fifteen cards leading to fifteen mini-games; a 🏠 button in
 each game returns to the hub. All games share one juice toolkit (Web Audio sounds, canvas
 confetti/sparks, screen flash, `navigator.vibrate`, and `pl-PL` speech via the Web Speech API).
 
@@ -48,11 +48,33 @@ Mini-games:
   🧽 clears. Canvas uses `devicePixelRatio` scaling and `touch-action:none`; `paintSize()`
   refits on resize while preserving the drawing (snapshot → redraw). Chosen color persists
   (`sk_paint`). No win state.
+- **STUKANKA** (`#whackGame`) — whack-a-mole. Six dirt holes (`.wmHole`); a picture emoji pops
+  up (`.wmMole` translated) for ~0.9–1.7 s, tap it before it hides for a point (`#whackCount`).
+  A self-scheduling `whackTick` timer pops random free holes and stops when `current !== 'whack'`.
+  No win state.
+- **POLICZ!** (`#countGame`) — counting. Shows N copies of one emoji; child taps the matching
+  digit among 1..max buttons. Max **3 / 5** via chips (`sk_liczby`). Correct → celebrate + speaks
+  the Polish number word (`NUM_WORDS`) + advance; wrong shakes with no penalty.
+- **CO NIE PASUJE?** (`#oddGame`) — odd-one-out. A grid of one repeated emoji with a single
+  different tile; tap the different one. Grid **2×2 / 3×2 / 3×3** via chips (`sk_odd`). Mirrors
+  the solve/advance + speech flow (says the odd picture's word).
+- **KOLORY** (`#sortGame`) — colour sorting. A solid-coloured ball appears; tap the basket of the
+  matching colour among **2 / 3 / 4** (`sk_sort`, colours from `SORT_COLORS`). Correct → celebrate
+  + speaks the colour name + advance; wrong shakes. Item is a solid colour with a small glossy
+  highlight so the colour reads clearly.
+- **LABIRYNT** (`#mazeGame`) — trace-to-goal. Drag a finger from 🐭 through a forgiving two-bar
+  slalom corridor (drawn on `#mazeCanvas`) to 🧀; reaching the goal radius celebrates + new layout
+  (gaps flip). Touching a wall softly resets the current stroke (buzz, no penalty). Canvas uses
+  `devicePixelRatio`; markers are DOM (`.mazeMark`) positioned over the canvas.
+- **ŚWIATŁA** (`#simonGame`) — Simon. Four colour pads flash a growing sequence with tones
+  (`SIMON_COLORS`/`SIMON_TONES`); child repeats it. Correct round → celebrate + sequence grows;
+  a mistake is toddler-forgiving (gentle buzz, replays the same sequence — no game over). Best
+  length persists (`sk_simon`).
 
-PUZZLE, ZDRAPKA, PARY, CO SŁYSZYSZ?, BĄBELKI and CIENIE draw pictures from the shared `PICS`
-array (~178 simple, bold, recognizable emoji + Polish word); `randomPics(n)` returns n distinct.
-After a win, tapping the board/card advances to the next round (600 ms grace so mashing can't
-skip it).
+PUZZLE, ZDRAPKA, PARY, CO SŁYSZYSZ?, BĄBELKI, CIENIE, STUKANKA, POLICZ!, CO NIE PASUJE? and
+LABIRYNT-goal draw pictures from the shared `PICS` array (~178 simple, bold, recognizable emoji +
+Polish word); `randomPics(n)` returns n distinct. After a win, tapping the board/card advances to
+the next round (600 ms grace so mashing can't skip it).
 
 The entire app lives in `index.html` — inline CSS + one inline `<script>`. No build system,
 no dependencies, no external requests (works offline once loaded). Screens are `.screen`
@@ -114,6 +136,20 @@ After every edit:
    - **Malowanie**: `#paintTools .swatch` has 11 buttons (9 colors + 🌈 + 🧽); dragging
      `pointermove` across `#paintCanvas` paints (non-transparent pixels appear); the 🧽 tool
      clears the canvas back to empty.
+   - **Stukanka**: `#whackGrid .wmHole` has 6 holes; after ~1.5 s some carry `.up`; a
+     `pointerdown` on an `.up` hole bumps `#whackCount`; leaving via 🏠 stops the pop timer.
+   - **Policz!**: `.czchip` gives max 3/5 → that many `.cntBtn`s; the correct button's digit
+     equals `#countItems span` count; correct → `.right` + `#countBravo`, wrong → `.wrong`.
+   - **Co nie pasuje?**: `.ozchip` gives 4 / 6 / 9 `.oddCell`s; the odd cell has `data-odd="1"`;
+     tapping it → `.right` + `#oddBravo`, others `.wrong`.
+   - **Kolory**: `.szcchip` gives 2 / 3 / 4 `.sortBasket`s; the correct basket is the one whose
+     colour matches `#sortItem` (tap-with-delay since a wrong tap briefly locks input) → `.right`
+     + `#sortBravo`.
+   - **Labirynt**: `#mazeCanvas` is sized; a finely-interpolated `pointermove` drag from 🐭 down
+     through the bottom gap, across, up through the top gap, to 🧀 shows `#mazeBravo` (a test can
+     try both gap orientations since `maze.flip` is random).
+   - **Światła**: `#simonPads .simPad` has 4 pads; watch the `.lit` flash order (record via
+     MutationObserver until `#simonPads.wait`), replay that order → `#simonBravo`.
 
 ## Architecture notes (all inside index.html)
 
@@ -124,9 +160,9 @@ After every edit:
   `buildBag()` filters the bank by selected phonemes+positions (falls back to all positions if
   the combo has no words) and shuffles; prizes draw from the bag without repeats.
 - `PICS` — shared picture bank (`[word, emoji]`, ~178 entries) for PUZZLE, ZDRAPKA, PARY,
-  CO SŁYSZYSZ?, BĄBELKI and CIENIE; keep emoji simple and bold so a
-  sliced/half-scratched/bubbled/silhouetted version stays recognizable. `randomPics(n)` returns
-  n distinct `{w,e}`.
+  CO SŁYSZYSZ?, BĄBELKI, CIENIE, STUKANKA, POLICZ! and CO NIE PASUJE?; keep emoji simple and bold
+  so a sliced/half-scratched/bubbled/silhouetted/counted version stays recognizable.
+  `randomPics(n)` returns n distinct `{w,e}`.
 - **Puzzle**: state in `pz` (`cols,rows,pic,order,cell,sel,solved`); `order[slot]=correctIdx`.
   `pzLayout()` (re)computes cell size + emoji font on resize; `pzPaint()` sets each cell's
   `translate` to reveal its slice; `pzTapSlot()` swaps; solved = `order[i]===i` for all. Chosen
@@ -156,6 +192,26 @@ After every edit:
   fits the backing store to the CSS box at `devicePixelRatio`, snapshotting + redrawing so a
   resize doesn't wipe the picture. 🌈 sets `paint.rainbow` (hue cycles per stroke segment); 🧽
   (`paintWipe()`) clears. Selected color index persists (`sk_paint`).
+- **Stukanka**: `whack` state; `buildWhack()` (once) makes 6 `.wmHole`s each with a `.wmMole`.
+  `whackTick()` self-schedules (`whack.spawnT`) to `whackPop()` a random free hole, and returns
+  when `current !== 'whack'`. Each pop hides itself after a random delay; `whackHit()` scores.
+- **Policz!**: `cnt` state; `newCount()` renders `cnt.n` emoji + digit buttons 1..`cnt.max`.
+  `countTap()` compares the button's `data-d` to `cnt.n`; speaks `NUM_WORDS[cnt.n]`. Max persists
+  (`sk_liczby`). One `#countArea` handler routes tap / advance-after-solve.
+- **Co nie pasuje?**: `odd` state; `newOdd()` fills the grid with `common.e` and one `oddP.e`
+  (`data-odd="1"`); `oddLayout()` recomputes cell size on resize. Mirrors the single-handler
+  solve/advance; says the odd word. Grid persists (`sk_odd`).
+- **Kolory**: `sort` state; `SORT_COLORS` palette. `newSort()` picks `sort.count` distinct colours,
+  renders the item (solid colour + glossy highlight) and baskets; `sortTap()` matches `data-ci` to
+  `sort.target`, speaks the colour name. Count persists (`sk_sort`).
+- **Labirynt**: `maze` state; `mazeSetup()` fits `#mazeCanvas` at `devicePixelRatio`, computes a
+  two-bar slalom (`mazeGeometry()`, `maze.flip` chooses gap sides) and positions the DOM markers
+  (`mazePlaceMarks()`). `pointermove` draws the trail, `mazeHitsWall()` soft-resets the stroke,
+  reaching `maze.goalR` of the goal calls `mazeWin()`. Re-fits on resize.
+- **Światła**: `simon` state; `buildSimon()` (once) makes 4 `.simPad`s. `simonPlaySeq()` flashes
+  `simon.seq` on a timer (guarded by `current === 'simon'`), then sets `simon.accept`;
+  `simonInput()` checks each tap against `simon.step`, growing the sequence on success and
+  forgivingly replaying on a mistake. Best length persists (`sk_simon`).
 - **Speech on iOS/iPad**: iOS ignores `speechSynthesis.speak()` unless first primed *inside* a
   user gesture — every prize speaks from a timer, so a document-level `pointerdown` capture
   listener calls `primeSpeech()` once. `say()` uses **default** rate/pitch and **no explicit
@@ -170,7 +226,8 @@ After every edit:
 - Selections persist in `localStorage`: `sk_gloski` (phonemes), `sk_pozycje` (positions),
   `sk_puzzle` (puzzle grid size), `sk_memory` (memory grid size), `sk_listen` (choice count),
   `sk_shadow` (Cienie choice count), `sk_paint` (Malowanie brush color index),
-  `sk_tts` (`1`/`0` — whether speech synthesis works on this device).
+  `sk_liczby` (POLICZ! max), `sk_odd` (CO NIE PASUJE? grid size), `sk_sort` (KOLORY basket count),
+  `sk_simon` (ŚWIATŁA best sequence length), `sk_tts` (`1`/`0` — whether speech synthesis works).
 - Input model: taps count on `pointerdown` with **no cooldown** (a 3-year-old mashes); only
   post-win screens have a grace period (chest 800 ms; puzzle/scratch 600 ms) so mashing can't
   skip the reward, plus a 350 ms `transitioning` guard during chest theme swap. Don't
